@@ -54,7 +54,9 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Plugin-System (engines/webuis/mcp_servers; deny built-in override)
 - [x] Benchmark-Modul (tokens/s, TTFT, p50/p95/p99) + Concurrency-Auto-Tuning (`benchmark`)
 - [x] Kapazitätsplaner (Nutzer × Prompt-/Antwortlänge → Schätzung) (`plan`)
-- [ ] Engine-seitiges Auto-Tuning (max_num_seqs/gpu_mem_util — braucht Engine-Restart)
+- [x] Auto-Optimizer (`installer/tuning.py`, `--optimize`): max. Concurrency via datenparalleler
+      Replicas + GPU-Pinning + fp8-KV + getunte Batching-Parameter (LiteLLM-Lastverteilung)
+- [ ] *Gemessenes* engine-seitiges Auto-Tuning mit Engine-Restart (Hardware nötig)
 - [x] Rollen-/Rechtesystem + Mandantenfähigkeit (`roles.yaml`, `multi_tenant.yaml`, Teams/Keys/Budgets)
 - [x] Policy-as-Code (zentrale `policy.yaml` + `bootstrap-tenants.sh`)
 - [x] Image-/Supply-Chain-Security: Pinning-Audit (`audit-images`) + Scan (Trivy/Grype) + SBOM (Syft)

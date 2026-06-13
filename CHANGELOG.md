@@ -136,3 +136,12 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 ---
 
 > Frühere/zukünftige Stufen siehe [`ROADMAP.md`](ROADMAP.md).
+
+### Stufe 3 (Forts.) — Performance-Auto-Optimizer
+
+- `installer/tuning.py` + `--optimize throughput|latency|balanced`: bestimmt die
+  effizienteste Konfiguration (kleinste Tensor-Parallel-Groesse, dann max. datenparallele
+  Replicas mit eigener GPU-Zuweisung, fp8-KV-Cache, getunte max_num_seqs/-batched-tokens)
+- LiteLLM verteilt Last ueber Replicas (gleicher model_name); Compose nutzt device_ids,
+  K8s setzt Deployment-replicas; UTF-8-Stdout abgehaertet
+- Smoke-Tests gesamt 34/34

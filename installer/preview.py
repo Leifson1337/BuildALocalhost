@@ -92,6 +92,10 @@ def _stack(cfg: ResolvedConfig) -> None:
     t.add_row("dtype", str(inf.get("dtype")))
     t.add_row("max_model_len", str(inf.get("max_model_len")))
     t.add_row("GPU mem util", str(inf.get("gpu_memory_utilization")))
+    t.add_row("max_num_seqs", str(inf.get("max_num_seqs", "—")))
+    t.add_row("KV-cache dtype", str(inf.get("kv_cache_dtype", "auto")))
+    if inf.get("_tuning_strategy"):
+        t.add_row("Tuning", inf["_tuning_strategy"])
     t.add_row("Gateway", cfg.data.get("gateway", {}).get("type", "—"))
     t.add_row("Web-UI", ", ".join(cfg.data.get("web", {}).get("ui", []) or ["—"]))
     t.add_row("Auth", cfg.auth_provider_id)

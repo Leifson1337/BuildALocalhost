@@ -98,6 +98,7 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "engine_gpu_required": engine.get("gpu") == "required",
         "engine_command": build_engine_command(cfg, engine),
         "models": _models_context(cfg, engine),
+        "deployments": _deployments_context(cfg, engine),
         "shm_size": "32gb",
         # gateway
         "rate_limits": bool(data.get("gateway", {}).get("rate_limits", False)),
@@ -130,6 +131,10 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "gpu_memory_utilization": inf.get("gpu_memory_utilization", 0.90),
         "max_model_len": inf.get("max_model_len", 32768),
         "dtype": inf.get("dtype", "bfloat16"),
+        "max_num_seqs": inf.get("max_num_seqs", 256),
+        "max_num_batched_tokens": inf.get("max_num_batched_tokens", 8192),
+        "kv_cache_dtype": inf.get("kv_cache_dtype", "auto"),
+        "tuning_strategy": inf.get("_tuning_strategy", ""),
         # secrets (rendered into .env only)
         "secrets": cfg.secrets,
     }
@@ -141,11 +146,10 @@ def _env_var_for(name: str) -> str:
 
 
 def _models_context(cfg: ResolvedConfig, engine: dict) -> list[dict[str, Any]]:
-    """One entry per served model: service name, env var, command, port."""
-    inf = cfg.data["inference"]
+    """Logical models (one per unique name): env var + id. Used for .env MODEL_* vars."""
     port = engine.get("default_port", 8000)
     out: list[dict[str, Any]] = []
-    for m in inf.get("models", []):
+    for m in cfg.data["inference"].get("models", []):
         env_var = _env_var_for(m["name"])
         out.append({
             "name": m["name"],
@@ -154,8 +158,46 @@ def _models_context(cfg: ResolvedConfig, engine: dict) -> list[dict[str, Any]]:
             "env_var": env_var,
             "model": m["model"],
             "port": port,
+            "replicas": int(m.get("replicas", 1) or 1),
             "command": build_engine_command(cfg, engine, model_env=env_var),
         })
+    return out
+
+
+def _deployments_context(cfg: ResolvedConfig, engine: dict) -> list[dict[str, Any]]:
+    """One entry per replica: distinct service name, shared model env var + command.
+
+    Data-parallel replicas of the same model share `name` (LiteLLM load-balances across
+    them) but get distinct service names (inference-<name>-N).
+    """
+    inf = cfg.data["inference"]
+    port = engine.get("default_port", 8000)
+    tp = int(inf.get("tensor_parallel_size", 1) or 1)
+    g_total = cfg.system.total_gpu_count
+    out: list[dict[str, Any]] = []
+    gpu_cursor = 0
+    for m in inf.get("models", []):
+        env_var = _env_var_for(m["name"])
+        replicas = int(m.get("replicas", 1) or 1)
+        command = build_engine_command(cfg, engine, model_env=env_var)
+        for i in range(replicas):
+            suffix = f"-{i + 1}" if replicas > 1 else ""
+            # Pin each replica to its own GPU slice so replicas don't collide.
+            device_ids: list[str] = []
+            if g_total > 0:
+                device_ids = [str((gpu_cursor + k) % g_total) for k in range(tp)]
+                gpu_cursor += tp
+            out.append({
+                "name": m["name"],
+                "role": m.get("role", "main"),
+                "service": f"inference-{m['name']}{suffix}",
+                "env_var": env_var,
+                "model": m["model"],
+                "port": port,
+                "command": command,
+                "gpu_device_ids": device_ids,
+                "multi_replica": replicas > 1,
+            })
     return out
 
 
@@ -242,6 +284,9 @@ def build_engine_command(cfg: ResolvedConfig, engine: dict, model_env: str = "MA
             "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}",
             "--max-model-len", "${MAX_MODEL_LEN}",
             "--dtype", "${DTYPE}",
+            "--max-num-seqs", "${MAX_NUM_SEQS}",
+            "--max-num-batched-tokens", "${MAX_NUM_BATCHED_TOKENS}",
+            "--kv-cache-dtype", "${KV_CACHE_DTYPE}",
         ]
         if pp > 1:
             cmd += ["--pipeline-parallel-size", "${PIPELINE_PARALLEL_SIZE}"]

@@ -80,6 +80,7 @@ def build(
     recommendation: Recommendation,
     model: str | None = None,
     goal: str = "high_throughput_chat",
+    optimize_for: str = "balanced",
     overrides: dict[str, Any] | None = None,
 ) -> ResolvedConfig:
     data = copy.deepcopy(catalog.load_profile(profile_name))
@@ -93,16 +94,16 @@ def build(
     inf = data["inference"]
     if inf.get("engine") in (None, "auto"):
         inf["engine"] = recommendation.primary_engine
-    if inf.get("tensor_parallel_size") in (None, "auto"):
-        inf["tensor_parallel_size"] = recommendation.tensor_parallel_size
     if inf.get("pipeline_parallel_size") in (None, "auto"):
         inf["pipeline_parallel_size"] = recommendation.pipeline_parallel_size
-    if inf.get("gpu_memory_utilization") in (None, "auto"):
-        inf["gpu_memory_utilization"] = recommendation.gpu_memory_utilization
+    # tensor_parallel_size + gpu_memory_utilization are owned by the auto-tuner (step 2b).
     if inf.get("dtype") in (None, "auto"):
         inf["dtype"] = recommendation.precision[0]
     if inf.get("max_model_len") in (None, "auto"):
         inf["max_model_len"] = _default_max_len(resolved_model)
+
+    # 2b) performance auto-tuning: most efficient serving params + replica strategy
+    _apply_tuning(data, system, goal=goal, optimize_for=optimize_for)
 
     # 3) runtime hint + GPU runtime family (cuda/rocm/cpu)
     data.setdefault("runtime", {}).setdefault("type", recommendation.runtime)
@@ -138,6 +139,48 @@ def build(
 
 
 # --------------------------------------------------------------------------- helpers
+
+def _apply_tuning(data: dict, system, *, goal: str, optimize_for: str) -> None:
+    """Fill serving params from the auto-optimizer for maximum efficient throughput.
+
+    Sets vLLM batching/KV params on every model and, for a single-model profile under a
+    throughput goal, expands data-parallel replicas to maximise concurrency.
+    """
+    from installer import tuning
+    inf = data.get("inference", {})
+    models = inf.get("models", [])
+    primary_model = models[0]["model"] if models else inf.get("model", "")
+    t = tuning.optimize(system, goal=goal, model_vram_gb=_model_vram(primary_model),
+                        optimize_for=optimize_for)
+
+    # Tensor parallelism (only when the profile left it auto).
+    if inf.get("tensor_parallel_size") in (None, "auto"):
+        inf["tensor_parallel_size"] = t.tensor_parallel_size
+    if inf.get("gpu_memory_utilization") in (None, "auto"):
+        inf["gpu_memory_utilization"] = t.gpu_memory_utilization
+
+    # Batching / KV params (always applied unless explicitly overridden later).
+    inf.setdefault("max_num_seqs", t.max_num_seqs)
+    inf.setdefault("max_num_batched_tokens", t.max_num_batched_tokens)
+    inf.setdefault("kv_cache_dtype", t.kv_cache_dtype)
+    inf["enable_chunked_prefill"] = inf.get("enable_chunked_prefill", t.enable_chunked_prefill)
+    inf["enable_prefix_caching"] = inf.get("enable_prefix_caching", t.enable_prefix_caching)
+
+    # Data-parallel replicas: only auto-expand a single-model throughput deployment.
+    auto_replica_goals = {"high_throughput_chat", "many_users"}
+    if len(models) == 1 and "replicas" not in models[0] and goal in auto_replica_goals:
+        models[0]["replicas"] = t.data_parallel_replicas
+    inf["_tuning_strategy"] = t.strategy
+
+
+def _model_vram(model: str) -> float:
+    cats = catalog.load_models().get("categories", {})
+    for cat in cats.values():
+        for sug in cat.get("suggestions", []):
+            if sug.get("hf_id") == model:
+                return float(sug.get("min_vram_gb", 16))
+    return 16.0
+
 
 def _normalize_models(inf: dict, resolved_model: str) -> None:
     """Normalise inference into a `models` routing list.

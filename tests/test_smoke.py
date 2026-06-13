@@ -47,6 +47,7 @@ def test_recommend_consumer_low_vram_warns():
 
 
 def test_production_render_writes_files():
+    import yaml
     _, _, cfg, issues = _pipeline("production", "8xH100", "high_throughput_chat")
     assert not validators.has_fatal(issues), [i.message for i in issues if i.severity == "fatal"]
     with tempfile.TemporaryDirectory() as tmp:
@@ -59,9 +60,14 @@ def test_production_render_writes_files():
         assert "litellm" in text and "inference" in text
         assert "dcgm-exporter" in text          # monitoring on for production
         assert "traefik" in text                # reverse proxy on
+        # Throughput-optimal on 8xH100 with a 7B model: tp=1 + 8 data-parallel replicas.
+        doc = yaml.safe_load(text)
+        repl = [s for s in doc["services"] if s.startswith("inference-main-chat-")]
+        assert len(repl) == 8, repl
         envtext = env.read_text(encoding="utf-8")
         assert "LITELLM_MASTER_KEY=sk-" in envtext
-        assert "TENSOR_PARALLEL_SIZE=8" in envtext
+        assert "TENSOR_PARALLEL_SIZE=1" in envtext
+        assert "MAX_NUM_SEQS=" in envtext and "KV_CACHE_DTYPE=fp8" in envtext
 
 
 def test_minimal_render_no_traefik_no_monitoring():
@@ -154,6 +160,42 @@ def test_socket_proxy_replaces_raw_socket():
         assert "docker-socket-proxy" in text
 
 
+def test_tuning_maximizes_replicas():
+    from installer import tuning
+    system = build_simulation("8xH100")
+    t = tuning.optimize(system, goal="many_users", model_vram_gb=18, optimize_for="throughput")
+    assert t.tensor_parallel_size == 1          # 7B fits one H100
+    assert t.data_parallel_replicas == 8        # one replica per GPU => max concurrency
+    assert t.kv_cache_dtype == "fp8"            # Hopper => fp8 KV cache
+
+
+def test_tuning_big_model_tensor_parallel():
+    from installer import tuning
+    system = build_simulation("8xH100")          # 640 GB
+    t = tuning.optimize(system, goal="highest_quality", model_vram_gb=160, optimize_for="balanced")
+    assert t.tensor_parallel_size == 8 and t.data_parallel_replicas == 1
+
+
+def test_replicas_get_distinct_gpu_ids():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "many_users")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="many_users", optimize_for="throughput")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+        repl = {k: v for k, v in doc["services"].items() if k.startswith("inference-main-chat-")}
+        assert len(repl) == 8
+        seen = set()
+        for v in repl.values():
+            ids = v["deploy"]["resources"]["reservations"]["devices"][0]["device_ids"]
+            assert len(ids) == 1
+            seen.add(ids[0])
+        assert len(seen) == 8                    # each replica pinned to a distinct GPU
+
+
 def test_routing_multi_model():
     import yaml
     system = build_simulation("8xH100")
@@ -175,7 +217,8 @@ def test_routing_multi_model():
 
 
 def test_single_model_backward_compatible():
-    system = build_simulation("4xH100")
+    # Single GPU => one replica => unsuffixed service name (backward compatible).
+    system = build_simulation("1xH100")
     rec = recommend(system, "high_throughput_chat")
     cfg = profile_builder.build(profile_name="production", system=system,
                                 recommendation=rec, goal="high_throughput_chat")

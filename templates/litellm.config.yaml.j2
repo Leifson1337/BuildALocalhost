@@ -2,7 +2,8 @@
 # All UIs/clients talk to LiteLLM; engines stay on the internal network (ADR-0005).
 
 model_list:
-{% for m in models %}
+{% for m in deployments %}
+  # data-parallel replicas share model_name -> LiteLLM load-balances across them
   - model_name: {{ m.name }}
     litellm_params:
       model: openai/{{ m.model }}

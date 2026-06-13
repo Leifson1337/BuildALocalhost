@@ -118,7 +118,7 @@ metadata:
   namespace: {{ namespace }}
   labels: {app: {{ m.service }}, role: "{{ m.role }}"}
 spec:
-  replicas: 1
+  replicas: {{ m.replicas }}        # data-parallel replicas for concurrency
   selector: {matchLabels: {app: {{ m.service }}}}
   template:
     metadata: {labels: {app: {{ m.service }}}}

@@ -116,8 +116,8 @@ services:
     networks: [internal]
     restart: unless-stopped
 
-{% for m in models %}
-  # Inference engine for model '{{ m.name }}' (role: {{ m.role }})
+{% for m in deployments %}
+  # Inference engine for model '{{ m.name }}' (role: {{ m.role }}) — data-parallel replica
   {{ m.service }}:
     image: {{ engine_image }}
     ipc: host
@@ -142,7 +142,11 @@ services:
         reservations:
           devices:
             - driver: nvidia
+{% if m.multi_replica and m.gpu_device_ids %}
+              device_ids: [{% for d in m.gpu_device_ids %}"{{ d }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+{% else %}
               count: all
+{% endif %}
               capabilities: [gpu]
 {% elif engine_gpu_required and runtime_kind == "rocm" %}
     # AMD ROCm GPU access

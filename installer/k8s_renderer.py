@@ -63,6 +63,9 @@ def _k8s_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "GPU_MEMORY_UTILIZATION": str(ctx["gpu_memory_utilization"]),
         "MAX_MODEL_LEN": str(ctx["max_model_len"]),
         "DTYPE": str(ctx["dtype"]),
+        "MAX_NUM_SEQS": str(ctx["max_num_seqs"]),
+        "MAX_NUM_BATCHED_TOKENS": str(ctx["max_num_batched_tokens"]),
+        "KV_CACHE_DTYPE": str(ctx["kv_cache_dtype"]),
     }
     for m in ctx["models"]:
         local = dict(subs)

@@ -262,6 +262,26 @@ panel and Langfuse v3 (clickhouse) remain possible later.
 
 ---
 
+## ADR-0020 — Throughput-first auto-tuner: data-parallel replicas over big tensor-parallel
+
+**Context:** Goal is to serve as many concurrent users as fast as possible on any hardware
+combination.
+
+**Decision:** `installer/tuning.py` (pure) computes the *smallest* tensor-parallel size that
+fits the model, then launches as many **data-parallel replicas** as the GPUs allow, each pinned
+to its own GPU slice (`device_ids` in Compose, `replicas` in K8s). LiteLLM load-balances across
+replicas (same `model_name`). It also sets fp8 KV-cache (Hopper/Blackwell/Ada), chunked
+prefill, prefix caching, and tuned `max_num_seqs`/`max_num_batched_tokens`. The tuner *owns*
+`tensor_parallel_size` + `gpu_memory_utilization` (recommendation only advises). `--optimize
+throughput|latency|balanced` and `highest_quality` goal switch to one large tensor-parallel
+model.
+
+**Consequences:** e.g. 8×H100 + a 7B model now serves 8 independent replicas (max concurrency)
+instead of one 8-way-sharded model. Behaviour is deterministic and unit-tested; validated with
+`docker compose config`. Measured tuning (engine restarts) remains the `benchmark` tool's job.
+
+---
+
 ## Open decisions (to be asked, not assumed)
 
 Tracked in `ROADMAP.md` → "Offene Fragen". Will be raised when the relevant stage is reached:

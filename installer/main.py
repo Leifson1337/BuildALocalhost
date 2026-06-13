@@ -7,11 +7,20 @@ wizard land in Stage 2 (see ROADMAP.md). Wizard texts are German; code/comments 
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
 import typer
 from rich.console import Console
+
+# Make output robust on consoles that aren't UTF-8 (e.g. Windows cp1252 when piped),
+# so non-ASCII text never aborts generation. No-op where already UTF-8.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    except (AttributeError, ValueError):
+        pass
 
 from installer import DEFAULT_OUTPUT_DIR, catalog, detect_gpus, preview, profile_builder
 from installer import compose_renderer, validators
@@ -27,6 +36,7 @@ def main(
     profile: str = typer.Option("production", "--profile", help="Basis-Profil (minimal|production|…)."),
     simulate: Optional[str] = typer.Option(None, "--simulate", help='Hardware simulieren, z.B. "8xH100".'),
     goal: str = typer.Option("high_throughput_chat", "--goal", help="Optimierungsziel."),
+    optimize: str = typer.Option("balanced", "--optimize", help="throughput | latency | balanced."),
     model: Optional[str] = typer.Option(None, "--model", help="HF-Modell-ID oder lokaler Pfad."),
     output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", help="Ausgabeverzeichnis."),
     target: str = typer.Option("compose", "--target", help="Deployment-Ziel: compose | kubernetes."),
@@ -87,7 +97,7 @@ def main(
     # 5) Resolve config
     cfg = profile_builder.build(
         profile_name=profile, system=system, recommendation=rec,
-        model=model, goal=goal, overrides=overrides,
+        model=model, goal=goal, optimize_for=optimize, overrides=overrides,
     )
 
     # 5) Validate (ports skipped on dry-run / simulation)
