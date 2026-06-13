@@ -40,7 +40,7 @@ Dieses Projekt wird **stufenweise und lauffähig** gebaut. Aktueller Stand siehe
 |-------|--------|--------|
 | **1** | Funktionierender Kern-Stack + Installer-Grundgerüst + Doku | ✅ fertig |
 | **2** | Auswahl-Wizard, HF-Suche, RAG, MCP, Security-Profile, Auth-Auswahl, AMD ROCm | ✅ fertig |
-| **3** | Multi-Modell-Routing, K8s/Helm-Export, Backup/Restore, Update/Rollback, Offline-Bundle, Plugins | 🟡 in Arbeit |
+| **3** | Routing, K8s/Helm + Parität, Backup/Update/Rollback, Offline, Plugins, Policy/Multi-Tenancy, Supply-Chain, Benchmark/Eval, MIG/NCCL | 🟢 weitgehend fertig |
 
 ---
 
@@ -88,6 +88,21 @@ ai-stack/
 ```
 
 ---
+
+## Befehle (Überblick)
+
+```bash
+python -m installer --simulate "8xH100" --profile production   # generieren (Wizard/non-interactive)
+python -m installer --target kubernetes --profile enterprise   # + K8s-Manifeste + Helm-Chart
+python -m installer plan --simulate "4xH100" --users 50        # Kapazität schätzen
+python -m installer status   --output output                  # Admin-Überblick
+python -m installer audit-images --output output              # Image-Pinning prüfen
+python -m installer benchmark --output output --autotune      # TTFT/Latenz/tokens-s messen
+python -m installer eval --dataset configs/eval/example-golden.yaml   # Qualität/Regression
+```
+
+Betrieb über `make`: `backup`, `restore`, `update`, `rollback`, `bundle`,
+`bootstrap-tenants`, `scan`, `sbom`, `pin`, `verify-sigs`, `nccl-test`, `health`.
 
 ## Dokumentation
 
