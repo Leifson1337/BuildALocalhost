@@ -247,3 +247,186 @@ spec:
             backend: {service: {name: open-webui, port: {number: 8080}}}
 {% endif %}
 {% endif %}
+{% if rag.enabled %}
+# ---- RAG parity ----
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: vectordb, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: vectordb}}
+  template:
+    metadata: {labels: {app: vectordb}}
+    spec:
+      containers:
+        - name: vectordb
+          image: {{ rag.vector_db.image }}
+          ports: [{containerPort: {{ rag.vector_db.port }}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: vectordb, namespace: {{ namespace }}}
+spec: {selector: {app: vectordb}, ports: [{port: {{ rag.vector_db.port }}, targetPort: {{ rag.vector_db.port }}}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: embeddings, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: embeddings}}
+  template:
+    metadata: {labels: {app: embeddings}}
+    spec:
+{% if engine_gpu_required %}
+      nodeSelector: { {{ gpu_resource_key }}.present: "true" }
+      tolerations: [{key: {{ gpu_resource_key }}, operator: Exists, effect: NoSchedule}]
+{% endif %}
+      containers:
+        - name: tei
+          image: {{ rag.embeddings.image }}
+          args: ["--model-id", "{{ rag.embeddings.model }}", "--port", "{{ rag.embeddings.port }}"]
+          ports: [{containerPort: {{ rag.embeddings.port }}}]
+{% if engine_gpu_required %}
+          resources: {limits: { {{ gpu_resource_key }}: 1 }}
+{% endif %}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: embeddings, namespace: {{ namespace }}}
+spec: {selector: {app: embeddings}, ports: [{port: {{ rag.embeddings.port }}, targetPort: {{ rag.embeddings.port }}}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: reranker, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: reranker}}
+  template:
+    metadata: {labels: {app: reranker}}
+    spec:
+{% if engine_gpu_required %}
+      nodeSelector: { {{ gpu_resource_key }}.present: "true" }
+      tolerations: [{key: {{ gpu_resource_key }}, operator: Exists, effect: NoSchedule}]
+{% endif %}
+      containers:
+        - name: tei-rerank
+          image: {{ rag.reranker.image }}
+          args: ["--model-id", "{{ rag.reranker.model }}", "--port", "{{ rag.reranker.port }}"]
+          ports: [{containerPort: {{ rag.reranker.port }}}]
+{% if engine_gpu_required %}
+          resources: {limits: { {{ gpu_resource_key }}: 1 }}
+{% endif %}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: reranker, namespace: {{ namespace }}}
+spec: {selector: {app: reranker}, ports: [{port: {{ rag.reranker.port }}, targetPort: {{ rag.reranker.port }}}]}
+{% endif %}
+{% if mcp.enabled %}
+# ---- MCP gateway parity (internal only; no Ingress) ----
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: mcp-gateway, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: mcp-gateway}}
+  template:
+    metadata: {labels: {app: mcp-gateway}}
+    spec:
+      containers:
+        - name: mcp-gateway
+          image: {{ mcp.gateway_image }}
+          ports: [{containerPort: {{ mcp.gateway_port }}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: mcp-gateway, namespace: {{ namespace }}}
+spec: {selector: {app: mcp-gateway}, ports: [{port: {{ mcp.gateway_port }}, targetPort: {{ mcp.gateway_port }}}]}
+{% endif %}
+{% if monitoring %}
+# ---- Monitoring parity ----
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: prometheus-config, namespace: {{ namespace }}}
+data:
+  prometheus.yml: |
+    global: {scrape_interval: 15s}
+    scrape_configs:
+      - job_name: dcgm
+        static_configs: [{targets: ["dcgm-exporter:9400"]}]
+      - job_name: litellm
+        metrics_path: /metrics
+        static_configs: [{targets: ["litellm:4000"]}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: prometheus, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: prometheus}}
+  template:
+    metadata: {labels: {app: prometheus}}
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.0.1
+          args: ["--config.file=/etc/prometheus/prometheus.yml"]
+          ports: [{containerPort: 9090}]
+          volumeMounts: [{name: cfg, mountPath: /etc/prometheus}]
+      volumes:
+        - name: cfg
+          configMap: {name: prometheus-config}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: prometheus, namespace: {{ namespace }}}
+spec: {selector: {app: prometheus}, ports: [{port: 9090, targetPort: 9090}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: grafana, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: grafana}}
+  template:
+    metadata: {labels: {app: grafana}}
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.4.0
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: LITELLM_MASTER_KEY}}
+          ports: [{containerPort: 3000}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: grafana, namespace: {{ namespace }}}
+spec: {selector: {app: grafana}, ports: [{port: 3000, targetPort: 3000}]}
+{% if runtime_kind == "cuda" %}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: {name: dcgm-exporter, namespace: {{ namespace }}}
+spec:
+  selector: {matchLabels: {app: dcgm-exporter}}
+  template:
+    metadata: {labels: {app: dcgm-exporter}}
+    spec:
+      nodeSelector: { {{ gpu_resource_key }}.present: "true" }
+      tolerations: [{key: {{ gpu_resource_key }}, operator: Exists, effect: NoSchedule}]
+      containers:
+        - name: dcgm-exporter
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
+          ports: [{containerPort: 9400}]
+          securityContext: {capabilities: {add: ["SYS_ADMIN"]}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: dcgm-exporter, namespace: {{ namespace }}}
+spec: {selector: {app: dcgm-exporter}, ports: [{port: 9400, targetPort: 9400}]}
+{% endif %}
+{% endif %}

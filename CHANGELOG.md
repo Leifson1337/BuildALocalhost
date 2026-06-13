@@ -40,6 +40,12 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
   `output/k8s/nccl-test.yaml`; Makefile-Target `nccl-test`
 - Smoke-Tests gesamt 29/29
 
+#### Hinzugefügt (K8s-Parität)
+- Kubernetes-Manifeste decken nun auch RAG (vectordb/embeddings/reranker),
+  MCP-Gateway und Monitoring (Prometheus/Grafana/DCGM-DaemonSet) ab — Parität zu Compose
+  (Auth-Provider auf K8s bleibt Follow-up). Enterprise rendert 30 K8s-Objekte
+- Smoke-Tests gesamt 30/30
+
 
 #### Hinzugefügt
 - **Multi-Modell-Routing**: `inference.models: [{name, role, model}]` rendert eine Engine je

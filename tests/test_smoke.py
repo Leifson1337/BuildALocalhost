@@ -370,6 +370,26 @@ def test_langfuse_rendered_in_enterprise():
         assert "LANGFUSE_NEXTAUTH_SECRET=" in env
 
 
+def test_k8s_parity_enterprise():
+    import yaml
+    from installer import k8s_renderer
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="enterprise", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        k8s_renderer.render(cfg, out)
+        docs = list(yaml.safe_load_all((out / "k8s" / "manifests.yaml").read_text(encoding="utf-8")))
+        names = {(d.get("kind"), d["metadata"]["name"]) for d in docs if d}
+        for n in ("vectordb", "embeddings", "reranker"):
+            assert ("Deployment", n) in names, f"missing RAG {n}"
+        assert ("Deployment", "mcp-gateway") in names
+        assert ("Deployment", "prometheus") in names
+        assert ("DaemonSet", "dcgm-exporter") in names
+
+
 def test_mig_capability_detected_h100():
     system = build_simulation("8xH100")
     assert system.mig_capable is True

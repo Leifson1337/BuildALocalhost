@@ -63,7 +63,8 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [ ] MIG-Geräte-Zuweisung (UUID-Binding) + Multi-Node MPI-Operator (InfiniBand/RDMA)
 - [x] Admin-Überblick: Grafana-Overview-Dashboard + `status`-CLI
 - [x] Eval-/Qualitätsmodul: Golden-Dataset-Runner (`eval`) + Langfuse (optional, enterprise)
-- [ ] K8s-Parität für RAG/MCP/Auth/Monitoring (Compose bereits vollständig)
+- [x] K8s-Parität für RAG/MCP/Monitoring (Deployments/DaemonSet/ConfigMaps)
+- [ ] K8s-Parität für Auth-Provider (Authentik/Keycloak StatefulSets) — Compose vollständig
 - [ ] Plugin-Erweiterungspunkte: model_sources/vector_dbs/auth_providers/deployment_targets
 
 ---
