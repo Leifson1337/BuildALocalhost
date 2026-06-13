@@ -90,6 +90,18 @@ def load_compatibility() -> dict[str, Any]:
     return _load_yaml(CATALOGS_DIR / "compatibility.yaml")
 
 
+@functools.lru_cache(maxsize=None)
+def load_roles() -> dict[str, Any]:
+    return _load_yaml(CATALOGS_DIR / "roles.yaml")
+
+
+def get_role(role_id: str) -> dict[str, Any] | None:
+    for role in load_roles().get("roles", []):
+        if role.get("id") == role_id:
+            return role
+    return None
+
+
 def load_profile(name: str) -> dict[str, Any]:
     """Load a base profile by name (without .yaml)."""
     return _load_yaml(PROFILES_DIR / f"{name}.yaml")

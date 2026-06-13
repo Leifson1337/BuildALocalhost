@@ -35,6 +35,7 @@ def validate(cfg: ResolvedConfig, *, check_ports: bool = True) -> list[Issue]:
     issues += _check_hf_token(cfg)
     issues += _check_license(cfg)
     issues += _check_mcp(cfg)
+    issues += _check_policy(cfg)
     issues += _check_public_exposure(cfg)
     if check_ports:
         issues += _check_ports(cfg)
@@ -238,6 +239,15 @@ def _check_mcp(cfg: ResolvedConfig) -> list[Issue]:
                                 f"profile '{cfg.security_profile_id}'. Enable it only on local_only "
                                 "or with explicit override."))
     return issues
+
+
+def _check_policy(cfg: ResolvedConfig) -> list[Issue]:
+    """Validate tenant role/model references against served models + known roles."""
+    if not cfg.tenancy_enabled:
+        return []
+    from installer import policy as policy_mod
+    problems = policy_mod.validate_policy(cfg)
+    return [Issue("fatal", "policy.tenant", p) for p in problems]
 
 
 def _check_public_exposure(cfg: ResolvedConfig) -> list[Issue]:

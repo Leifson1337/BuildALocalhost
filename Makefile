@@ -6,7 +6,7 @@ PROFILE ?= production
 SIMULATE ?=
 
 .PHONY: help install preview generate generate-k8s up down logs ps health \
-        backup restore update rollback bundle clean test
+        backup restore update rollback bundle bootstrap-tenants clean test
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -53,6 +53,9 @@ rollback:  ## Roll back to the previous image snapshot
 
 bundle:  ## Build an offline/air-gapped bundle (images + deployment)
 	./scripts/offline-bundle.sh create $(OUTPUT) ai-stack-bundle.tar
+
+bootstrap-tenants:  ## Create LiteLLM teams/keys from policy.yaml (multi_tenant)
+	./scripts/bootstrap-tenants.sh $(OUTPUT)
 
 clean:  ## Remove generated output (keeps catalogs/profiles/templates)
 	rm -rf $(OUTPUT)

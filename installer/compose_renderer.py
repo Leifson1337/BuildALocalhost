@@ -65,6 +65,13 @@ def render(cfg: ResolvedConfig, output_dir: Path) -> list[Path]:
         (output_dir / "configs" / "authelia").mkdir(parents=True, exist_ok=True)
         written.append(_write(output_dir / "configs" / "authelia" / "configuration.yml",
                               env.get_template("authelia.yml.j2").render(**ctx)))
+    if cfg.policy_enabled:
+        from installer import policy as policy_mod
+        (output_dir / "configs" / "policy").mkdir(parents=True, exist_ok=True)
+        written.append(_write(output_dir / "configs" / "policy" / "policy.yaml",
+                              env.get_template("policy.yaml.j2").render(
+                                  profile_name=cfg.profile_name,
+                                  policy=policy_mod.build_policy(cfg))))
     return written
 
 

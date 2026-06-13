@@ -5,7 +5,17 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 
 ## [Unreleased]
 
-### Stufe 3 — Routing, K8s-Export, Betrieb, Plugins (in Arbeit)
+### Stufe 3 — Routing, K8s-Export, Betrieb, Plugins, Policy/Multi-Tenancy (in Arbeit)
+
+#### Hinzugefügt (Policy-as-Code + Mandantenfähigkeit)
+- `catalogs/roles.yaml` — Rollen→Rechte + Default-Policy
+- `installer/policy.py` — baut zentrale Policy aus Rollen + Security-Limits + Mandanten
+- `templates/policy.yaml.j2` → `configs/policy/policy.yaml` (für multi-tenant / auth-Profile)
+- `profiles/multi_tenant.yaml` — Routing + Mandanten (Teams/Keys/Budgets/RAG-Collections)
+- `scripts/bootstrap-tenants.sh` — legt LiteLLM-Teams/Keys/Budgets aus policy.yaml an
+- Validator: Mandanten mit unbekannter Rolle / nicht-serviertem Modell = fatal
+- Vorschau zeigt Mandanten; Smoke-Tests gesamt 23/23
+
 
 #### Hinzugefügt
 - **Multi-Modell-Routing**: `inference.models: [{name, role, model}]` rendert eine Engine je

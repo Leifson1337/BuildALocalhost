@@ -1,0 +1,43 @@
+# Role / RBAC catalog (Stage 3). Roles map to rights; the policy builder combines roles +
+# security-profile limits + tenants into a single generated policy document.
+
+roles:
+  - id: admin
+    name: Administrator
+    rights: [use_all_models, manage_keys, manage_tenants, view_logs, use_mcp,
+             manage_mcp, use_long_context, upload_files, start_agents, manage_rag]
+  - id: power_user
+    name: Power User
+    rights: [use_main_models, use_fast_models, use_code_models, use_mcp,
+             use_long_context, upload_files, start_agents, create_keys]
+  - id: user
+    name: Standard User
+    rights: [use_main_models, use_fast_models, upload_files]
+  - id: api_only
+    name: API-only Service
+    rights: [use_main_models]
+  - id: rag_admin
+    name: RAG Administrator
+    rights: [use_main_models, manage_rag, upload_files]
+  - id: mcp_admin
+    name: MCP Administrator
+    rights: [use_mcp, manage_mcp, use_main_models]
+  - id: auditor
+    name: Read-only Auditor
+    rights: [view_logs]
+
+# Default policy applied to every key/team unless a tenant overrides it.
+default_policy:
+  max_context_tokens: 32768
+  max_output_tokens: 4096
+  rate_limit_per_minute: 60
+  allow_models: [fast-chat, main-chat]
+  deny_mcp_tools: [shell, docker, kubernetes_write, database_write]
+  require_approval_for: [external_http, file_write, email_send, db_write]
+
+# Rights that grant access to model roles (used to expand allow_models per tenant role).
+model_rights:
+  use_all_models: ["*"]
+  use_main_models: [main-chat]
+  use_fast_models: [fast-chat]
+  use_code_models: [code]

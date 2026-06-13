@@ -1,0 +1,89 @@
+# Profile: multi_tenant
+# Multi-model routing + multi-tenancy (teams, per-tenant API keys, budgets, model rights,
+# RAG collections). The generated configs/policy/policy.yaml is the source of truth;
+# scripts/bootstrap-tenants.sh creates the LiteLLM teams/keys from it.
+#
+# The `tenants` below are EXAMPLES — replace with your real teams (or add via wizard).
+
+profile_name: multi_tenant
+description: Mandantenfähig — Teams, Keys, Budgets, Modellrechte, getrennte RAG-Collections.
+
+runtime:
+  type: docker_compose
+  nvidia_container_toolkit: true
+
+inference:
+  engine: vllm
+  dtype: bfloat16
+  tensor_parallel_size: auto
+  pipeline_parallel_size: 1
+  gpu_memory_utilization: 0.45
+  enable_prefix_caching: true
+  max_model_len: auto
+  models:
+    - {name: fast-chat, role: fast, model: Qwen/Qwen2.5-1.5B-Instruct}
+    - {name: main-chat, role: main, model: Qwen/Qwen2.5-7B-Instruct}
+    - {name: code,      role: code, model: Qwen/Qwen2.5-Coder-7B-Instruct}
+
+gateway:
+  type: litellm
+  openai_compatible: true
+  rate_limits: true
+  per_user_keys: true
+  router: {routing_strategy: latency-based-routing, num_retries: 2, timeout: 120}
+
+web:
+  reverse_proxy: traefik
+  tls: letsencrypt
+  auth: authentik
+  domains: {api: null, webui: null, grafana: null}
+  ui: [open-webui]
+
+rag:
+  enabled: true
+  vector_db: qdrant
+  embeddings_model: BAAI/bge-m3
+  reranker_model: BAAI/bge-reranker-v2-m3
+  document_app: anythingllm
+
+mcp:
+  enabled: false
+
+tenancy:
+  enabled: true
+  tenants:
+    - id: team-research
+      roles: [power_user]
+      budget_usd: 500
+      rate_limit_per_minute: 120
+      rag_collection: research
+      allow_mcp: false
+    - id: team-support
+      roles: [user]
+      models: [fast-chat, main-chat]
+      budget_usd: 100
+      rate_limit_per_minute: 60
+      rag_collection: support
+    - id: svc-integrations
+      roles: [api_only]
+      models: [main-chat]
+      budget_usd: 250
+      rate_limit_per_minute: 300
+
+monitoring:
+  enabled: true
+  prometheus: true
+  grafana: true
+  dcgm_exporter: true
+  node_exporter: true
+  cadvisor: true
+
+security:
+  profile: enterprise_zero_trust
+  expose_only_reverse_proxy: true
+  internal_networks: true
+  no_direct_gpu_api_exposure: true
+  audit_logs: true
+  rate_limit_per_minute: 120
+  max_context_tokens: 65536
+  max_output_tokens: 8192

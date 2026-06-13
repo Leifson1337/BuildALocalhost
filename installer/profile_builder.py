@@ -62,6 +62,16 @@ class ResolvedConfig:
     def mcp_enabled(self) -> bool:
         return bool(self.data.get("mcp", {}).get("enabled", False))
 
+    @property
+    def tenancy_enabled(self) -> bool:
+        return bool(self.data.get("tenancy", {}).get("enabled", False))
+
+    @property
+    def policy_enabled(self) -> bool:
+        """Emit a policy document for multi-tenant or auth-protected deployments."""
+        return self.tenancy_enabled or self.security_profile_id in (
+            "public_secure", "enterprise_zero_trust")
+
 
 def build(
     *,

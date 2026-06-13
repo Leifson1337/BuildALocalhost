@@ -212,6 +212,24 @@ plugins are skipped with a note, never a crash.
 
 ---
 
+## ADR-0017 — Policy-as-Code as a generated artifact; LiteLLM enforces it
+
+**Context:** Multi-tenant production needs roles, per-team model rights, budgets, rate limits,
+and a single auditable authorization source.
+
+**Decision:** `catalogs/roles.yaml` defines roles→rights and a default policy. `installer/policy.py`
+combines roles + the security profile's limits + profile-declared `tenancy.tenants` into one
+`configs/policy/policy.yaml` (rendered for multi-tenant or auth-protected deployments).
+`scripts/bootstrap-tenants.sh` turns it into LiteLLM teams/virtual-keys/budgets via the API —
+LiteLLM is the runtime enforcement point (ADR-0005). Validators reject tenants that reference
+unknown roles or unserved models.
+
+**Consequences:** Policy is reviewable, diffable, regenerable. Tenant identities are examples in
+profiles; real tenants are added via overrides/wizard. RBAC at the UI/IdP layer (Authentik
+groups) is a follow-up; gateway-level enforcement is covered now.
+
+---
+
 ## Open decisions (to be asked, not assumed)
 
 Tracked in `ROADMAP.md` → "Offene Fragen". Will be raised when the relevant stage is reached:

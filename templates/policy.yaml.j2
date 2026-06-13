@@ -1,0 +1,48 @@
+# GENERATED policy-as-code — Profile: {{ profile_name }}
+# Central authorization policy. Consumed by scripts/bootstrap-tenants.sh to create LiteLLM
+# teams/keys/budgets, and as documentation of effective limits. Edit + re-bootstrap to change.
+
+default:
+  max_context_tokens: {{ policy.default.max_context_tokens }}
+  max_output_tokens: {{ policy.default.max_output_tokens }}
+  rate_limit_per_minute: {{ policy.default.rate_limit_per_minute }}
+  allow_models:
+{% for m in policy.default.allow_models %}
+    - {{ m }}
+{% endfor %}
+  deny_mcp_tools:
+{% for t in policy.default.deny_mcp_tools %}
+    - {{ t }}
+{% endfor %}
+  require_approval_for:
+{% for a in policy.default.require_approval_for %}
+    - {{ a }}
+{% endfor %}
+
+roles:
+{% for r in policy.roles %}
+  - id: {{ r.id }}
+    rights: {{ r.rights }}
+{% endfor %}
+
+served_models:
+{% for m in policy.served_models %}
+  - {{ m }}
+{% endfor %}
+
+multi_tenant: {{ policy.multi_tenant | lower }}
+tenants:
+{% for t in policy.tenants %}
+  - id: {{ t.id }}
+    roles: {{ t.roles }}
+    allow_models: {{ t.allow_models }}
+{% if t.budget_usd is not none %}
+    budget_usd: {{ t.budget_usd }}
+{% endif %}
+    rate_limit_per_minute: {{ t.rate_limit_per_minute }}
+    max_context_tokens: {{ t.max_context_tokens }}
+{% if t.rag_collection %}
+    rag_collection: {{ t.rag_collection }}
+{% endif %}
+    allow_mcp: {{ t.allow_mcp | lower }}
+{% endfor %}

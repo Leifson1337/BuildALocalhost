@@ -55,8 +55,8 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Benchmark-Modul (tokens/s, TTFT, p50/p95/p99) + Concurrency-Auto-Tuning (`benchmark`)
 - [x] Kapazitätsplaner (Nutzer × Prompt-/Antwortlänge → Schätzung) (`plan`)
 - [ ] Engine-seitiges Auto-Tuning (max_num_seqs/gpu_mem_util — braucht Engine-Restart)
-- [ ] Rollen-/Rechtesystem + Mandantenfähigkeit
-- [ ] Policy-as-Code (zentrale Policy-Datei)
+- [x] Rollen-/Rechtesystem + Mandantenfähigkeit (`roles.yaml`, `multi_tenant.yaml`, Teams/Keys/Budgets)
+- [x] Policy-as-Code (zentrale `policy.yaml` + `bootstrap-tenants.sh`)
 - [ ] Image-/Supply-Chain-Security (Scanning, SBOM, Signaturen)
 - [ ] MIG-Unterstützung, Multi-Node/Cluster, NCCL-Test
 - [ ] Admin-Dashboard

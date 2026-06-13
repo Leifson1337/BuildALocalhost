@@ -97,6 +97,9 @@ def _stack(cfg: ResolvedConfig) -> None:
                          f"+ reranker ({rd.get('document_app')})")
     if cfg.mcp_enabled:
         t.add_row("MCP", ", ".join(cfg.data.get("mcp", {}).get("servers", []) or ["—"]))
+    if cfg.tenancy_enabled:
+        tenants = cfg.data.get("tenancy", {}).get("tenants", []) or []
+        t.add_row("Mandanten", ", ".join(t_.get("id", "?") for t_ in tenants) or "—")
     t.add_row("Monitoring", "ja" if cfg.monitoring_enabled else "nein")
     t.add_row("Reverse Proxy", cfg.data.get("web", {}).get("reverse_proxy", "—"))
     t.add_row("Security-Profil", cfg.security_profile_id)

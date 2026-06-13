@@ -270,6 +270,54 @@ def test_benchmark_percentiles_pure():
     assert percentiles([]) == {50: 0.0, 95: 0.0, 99: 0.0}
 
 
+def test_multi_tenant_policy_render():
+    import yaml
+    from installer import policy as policy_mod
+    system = build_simulation("8xH100")
+    rec = recommend(system, "agents_mcp")
+    cfg = profile_builder.build(profile_name="multi_tenant", system=system,
+                                recommendation=rec, goal="agents_mcp")
+    assert cfg.tenancy_enabled and cfg.policy_enabled
+    pol = policy_mod.build_policy(cfg)
+    ids = [t["id"] for t in pol["tenants"]]
+    assert ids == ["team-research", "team-support", "svc-integrations"]
+    # api_only role expands to main-chat only.
+    svc = next(t for t in pol["tenants"] if t["id"] == "svc-integrations")
+    assert svc["allow_models"] == ["main-chat"]
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        polfile = out / "configs" / "policy" / "policy.yaml"
+        assert polfile.exists()
+        loaded = yaml.safe_load(polfile.read_text(encoding="utf-8"))
+        assert loaded["multi_tenant"] is True
+        assert len(loaded["tenants"]) == 3
+
+
+def test_policy_rejects_unknown_role():
+    system = build_simulation("4xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(
+        profile_name="multi_tenant", system=system, recommendation=rec, goal="high_throughput_chat",
+        overrides={"tenancy": {"enabled": True,
+                               "tenants": [{"id": "bad", "roles": ["does_not_exist"]}]}},
+    )
+    issues = validators.validate(cfg, check_ports=False)
+    assert any(i.code == "policy.tenant" and i.severity == "fatal" for i in issues)
+
+
+def test_policy_emitted_for_public_secure_without_tenancy():
+    system = build_simulation("4xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    assert cfg.policy_enabled and not cfg.tenancy_enabled
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        assert (out / "configs" / "policy" / "policy.yaml").exists()
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
