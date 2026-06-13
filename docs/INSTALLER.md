@@ -9,6 +9,9 @@
 | `./install.sh`                       | Bootstrap (Linux/macOS): checks, venv, run wizard  |
 | `python -m installer`                | Run the wizard directly (venv must have deps)      |
 | `python -m installer --help`         | Show all CLI options                               |
+| `python -m installer plan ...`       | Capacity estimate (heuristic) before deploying     |
+| `python -m installer benchmark ...`  | Measure TTFT / latency p50/p95/p99 / tokens-per-sec |
+| `python -m installer list-profiles`  | List available profiles                            |
 
 ## CLI options (Stage 1)
 

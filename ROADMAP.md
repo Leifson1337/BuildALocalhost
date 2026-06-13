@@ -52,8 +52,9 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Update-/Rollback-System (Backup + Image-Snapshot + Health-Gate + Rollback)
 - [x] Offline/Air-Gapped-Bundle (`docker save`/`load` + Deployment)
 - [x] Plugin-System (engines/webuis/mcp_servers; deny built-in override)
-- [ ] Benchmark- & Auto-Tuning-Modul (tokens/s, TTFT, p50/p95/p99)
-- [ ] Kapazitätsplaner (Nutzer × Prompt-/Antwortlänge → Schätzung)
+- [x] Benchmark-Modul (tokens/s, TTFT, p50/p95/p99) + Concurrency-Auto-Tuning (`benchmark`)
+- [x] Kapazitätsplaner (Nutzer × Prompt-/Antwortlänge → Schätzung) (`plan`)
+- [ ] Engine-seitiges Auto-Tuning (max_num_seqs/gpu_mem_util — braucht Engine-Restart)
 - [ ] Rollen-/Rechtesystem + Mandantenfähigkeit
 - [ ] Policy-as-Code (zentrale Policy-Datei)
 - [ ] Image-/Supply-Chain-Security (Scanning, SBOM, Signaturen)

@@ -18,7 +18,11 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
   `rollback.sh`, `offline-bundle.sh` (create/import) + Makefile-Targets
 - **Plugin-System** (`installer/plugins.py`, `plugins/`): Manifeste erweitern Engines/Web-UIs/
   MCP-Server ohne Core-Änderung; Beispiel-Plugin (deaktiviert); Schema-Doku
-- 4 neue Smoke-Tests (gesamt 17/17); Routing + K8s (cuda/rocm) abgedeckt
+- Kapazitätsplaner (`installer/capacity.py`, CLI `plan`): heuristische Schätzung
+  max. paralleler Requests/Durchsatzklasse aus VRAM × Workload
+- Benchmark-Modul (`installer/benchmark.py`, CLI `benchmark [--autotune]`): misst TTFT,
+  Latenz p50/p95/p99, tokens/s gegen das Gateway; Concurrency-Sweep
+- Smoke-Tests gesamt 20/20 (Routing, K8s cuda/rocm, Plugins, Kapazität, Perzentile)
 
 #### Geändert
 - `compose_renderer`: pro-Modell-Services + parametrisierte Engine-Commands

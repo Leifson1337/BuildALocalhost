@@ -144,6 +144,86 @@ def list_engines() -> None:
                       f"[dim]({eng.get('api')})[/dim]")
 
 
+@app.command("plan")
+def plan(
+    simulate: Optional[str] = typer.Option(None, "--simulate", help='Hardware, z.B. "4xH100".'),
+    model: str = typer.Option("Qwen/Qwen2.5-7B-Instruct", "--model"),
+    users: int = typer.Option(10, "--users", help="Gleichzeitige Nutzer."),
+    prompt_tokens: int = typer.Option(1024, "--prompt-tokens"),
+    output_tokens: int = typer.Option(512, "--output-tokens"),
+    latency_target: float = typer.Option(5.0, "--latency-target", help="Sekunden."),
+) -> None:
+    """Kapazität schätzen (Heuristik — danach `benchmark` zur Messung)."""
+    from installer import capacity
+    from installer.hardware import build_simulation
+    system = build_simulation(simulate) if simulate else detect_gpus.detect_system()
+    wl = capacity.Workload(concurrent_users=users, avg_prompt_tokens=prompt_tokens,
+                           avg_output_tokens=output_tokens, latency_target_s=latency_target)
+    est = capacity.estimate(system, model, wl)
+    console.print(f"\n[bold]Kapazitätsschätzung[/bold] — {est.model}")
+    console.print(f"  VRAM gesamt:        {est.total_vram_gb} GB")
+    console.print(f"  Gewichte (ca.):     {est.model_weights_gb} GB")
+    console.print(f"  KV-Cache-Budget:    {est.kv_cache_budget_gb} GB")
+    console.print(f"  pro Request (ca.):  {est.per_request_gb} GB")
+    console.print(f"  max. parallel (ca.):{est.max_concurrent_requests}")
+    console.print(f"  Durchsatzklasse:    {est.throughput_class}")
+    console.print(f"  Ziel erreichbar:    {'ja' if est.meets_target else 'nein'}")
+    for n in est.notes:
+        console.print(f"  [dim]· {n}[/dim]")
+
+
+@app.command("benchmark")
+def benchmark_cmd(
+    output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", help="Deployment-Verzeichnis (.env)."),
+    base_url: Optional[str] = typer.Option(None, "--base-url", help="Überschreibt Endpoint."),
+    api_key: Optional[str] = typer.Option(None, "--api-key"),
+    model: str = typer.Option("main-chat", "--model"),
+    requests_total: int = typer.Option(50, "--requests"),
+    concurrency: int = typer.Option(10, "--concurrency"),
+    autotune: bool = typer.Option(False, "--autotune", help="Concurrency-Sweep."),
+) -> None:
+    """Gateway benchmarken (TTFT, Latenz p50/p95/p99, tokens/s). Stack muss laufen."""
+    from installer import benchmark as bm
+    if base_url is None or api_key is None:
+        base_url, api_key = _read_endpoint(output, base_url, api_key)
+    if not base_url or not api_key:
+        console.print("[red]base-url/api-key fehlen[/red] (oder keine .env in --output).")
+        raise typer.Exit(1)
+    if autotune:
+        best, results = bm.autotune(base_url=base_url, api_key=api_key, model=model)
+        for r in results:
+            console.print(f"  c={r.concurrency:>3}  tok/s={r.tokens_per_sec:>7}  "
+                          f"TTFT p95={r.ttft_p95}s  lat p95={r.latency_p95}s  "
+                          f"({r.successes}/{r.requests} ok)")
+        console.print(f"\n[green]Beste Concurrency nach Durchsatz:[/green] {best}")
+    else:
+        r = bm.run(base_url=base_url, api_key=api_key, model=model,
+                   requests_total=requests_total, concurrency=concurrency)
+        console.print(f"\n[bold]Benchmark[/bold] ({r.successes}/{r.requests} ok, "
+                      f"c={r.concurrency}, {r.wall_s}s)")
+        console.print(f"  tokens/sec:  {r.tokens_per_sec}")
+        console.print(f"  TTFT  p50/p95/p99:  {r.ttft_p50} / {r.ttft_p95} / {r.ttft_p99} s")
+        console.print(f"  Latenz p50/p95/p99: {r.latency_p50} / {r.latency_p95} / {r.latency_p99} s")
+        for n in r.notes:
+            console.print(f"  [yellow]· {n}[/yellow]")
+
+
+def _read_endpoint(output: Path, base_url: Optional[str], api_key: Optional[str]):
+    """Derive base_url + api_key from a generated .env when not given explicitly."""
+    env_file = output / ".env"
+    vals: dict[str, str] = {}
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, _, v = line.partition("=")
+                vals[k.strip()] = v.strip()
+    api_key = api_key or vals.get("LITELLM_MASTER_KEY")
+    if base_url is None:
+        domain = vals.get("API_DOMAIN")
+        base_url = f"https://{domain}" if domain else "http://127.0.0.1:4000"
+    return base_url, api_key
+
+
 # --------------------------------------------------------------------------- interactive helpers
 
 def _confirm(message: str, default: bool = True) -> bool:

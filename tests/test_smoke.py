@@ -243,6 +243,33 @@ def test_catalog_merge_is_safe_without_plugins():
     assert "vllm" in engines  # built-ins still present after plugin merge
 
 
+def test_capacity_estimate_h100():
+    from installer import capacity
+    system = build_simulation("4xH100")        # 320 GB VRAM
+    est = capacity.estimate(system, "Qwen/Qwen2.5-7B-Instruct",
+                            capacity.Workload(concurrent_users=10))
+    assert est.max_concurrent_requests > 10
+    assert est.meets_target
+    assert est.throughput_class in ("high", "medium")
+
+
+def test_capacity_infeasible_small_gpu():
+    from installer import capacity
+    system = build_simulation("1xRTX4090")      # 24 GB
+    est = capacity.estimate(system, "Qwen/Qwen2.5-72B-Instruct",
+                            capacity.Workload(concurrent_users=50))
+    assert est.throughput_class == "infeasible"
+    assert not est.meets_target
+
+
+def test_benchmark_percentiles_pure():
+    from installer.benchmark import percentiles
+    vals = [float(i) for i in range(1, 101)]    # 1..100
+    p = percentiles(vals)
+    assert p[50] <= p[95] <= p[99]
+    assert percentiles([]) == {50: 0.0, 95: 0.0, 99: 0.0}
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
