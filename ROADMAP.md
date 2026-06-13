@@ -58,14 +58,15 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Rollen-/Rechtesystem + Mandantenfähigkeit (`roles.yaml`, `multi_tenant.yaml`, Teams/Keys/Budgets)
 - [x] Policy-as-Code (zentrale `policy.yaml` + `bootstrap-tenants.sh`)
 - [x] Image-/Supply-Chain-Security: Pinning-Audit (`audit-images`) + Scan (Trivy/Grype) + SBOM (Syft)
-- [ ] Signaturprüfung (cosign) + Hash-Pinning automatisch
+- [x] Signaturprüfung (cosign) + automatisches Digest-Pinning (`pin-images.sh`/`verify-signatures.sh`)
 - [x] MIG-Erkennung (+ Empfehlungs-/Vorschau-Hinweise) · K8s nodeSelector/Tolerations · NCCL-Test (Docker + K8s-Job)
 - [ ] MIG-Geräte-Zuweisung (UUID-Binding) + Multi-Node MPI-Operator (InfiniBand/RDMA)
 - [x] Admin-Überblick: Grafana-Overview-Dashboard + `status`-CLI
 - [x] Eval-/Qualitätsmodul: Golden-Dataset-Runner (`eval`) + Langfuse (optional, enterprise)
 - [x] K8s-Parität für RAG/MCP/Monitoring (Deployments/DaemonSet/ConfigMaps)
 - [ ] K8s-Parität für Auth-Provider (Authentik/Keycloak StatefulSets) — Compose vollständig
-- [ ] Plugin-Erweiterungspunkte: model_sources/vector_dbs/auth_providers/deployment_targets
+- [x] Plugin-Erweiterungspunkte: vector_dbs + auth_providers (zusätzlich zu engines/webuis/mcp)
+- [ ] Plugin-Erweiterungspunkte: model_sources/monitoring/deployment_targets
 
 ---
 

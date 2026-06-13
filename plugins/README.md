@@ -30,14 +30,27 @@ provides:
     - id: my-mcp
       tier: advanced
       package: "@scope/my-mcp"
+  vector_dbs:                   # merged into catalogs/rag.yaml -> vector_dbs
+    - id: my-vdb
+      name: My Vector DB
+      image: registry/my-vdb:1.0
+      internal_port: 6333
+      volume: my_vdb_data
+  auth_providers:               # merged into catalogs/auth.yaml -> providers
+    - id: my-idp
+      name: My IdP
+      service: true
+      image: registry/my-idp:1.0
+      internal_port: 9000
+      forward_auth: true
 ```
 
 Entries are deduplicated by `id` (a plugin cannot override a built-in id). A malformed or
 disabled plugin is skipped with a note, never a crash.
 
-## Planned extension points (Stage 3+)
+## Extension points
 
-The current loader handles `engines`, `webuis`, and `mcp_servers`. Future kinds:
-`model_sources`, `vector_dbs`, `auth_providers`, `monitoring`, `deployment_targets`.
+The loader handles `engines`, `webuis`, `mcp_servers`, `vector_dbs`, and `auth_providers`.
+Future kinds: `model_sources`, `monitoring`, `deployment_targets`.
 
 See `installer/plugins.py` for the authoritative behaviour.

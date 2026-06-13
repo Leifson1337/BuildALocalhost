@@ -46,6 +46,26 @@ def extract_images(compose_path: Path) -> list[str]:
     return images
 
 
+def pin_compose(compose_path: Path, digest_map: dict[str, str]) -> str:
+    """Return compose YAML with each image replaced by image@sha256:<digest>.
+
+    `digest_map` maps the current image ref -> digest (sha256:...). Images not in the map are
+    left unchanged. Pure (string/YAML transform); resolving digests is the script's job.
+    """
+    data = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
+    for svc in (data.get("services") or {}).values():
+        img = svc.get("image")
+        if not img or "@sha256:" in img:
+            continue
+        digest = digest_map.get(img)
+        if digest:
+            base = img.split("@", 1)[0]
+            # Drop any tag; pin to digest.
+            repo = base.rsplit(":", 1)[0] if ":" in base.rsplit("/", 1)[-1] else base
+            svc["image"] = f"{repo}@{digest}"
+    return yaml.safe_dump(data, sort_keys=False, default_flow_style=False)
+
+
 def audit(compose_path: Path) -> dict:
     pins = [ImagePin(img, classify_pin(img)) for img in extract_images(compose_path)]
     return {

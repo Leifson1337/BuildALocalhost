@@ -50,7 +50,9 @@ def load_models() -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=None)
 def load_auth() -> dict[str, Any]:
-    return _load_yaml(CATALOGS_DIR / "auth.yaml")
+    data = _load_yaml(CATALOGS_DIR / "auth.yaml")
+    _merge_plugins(data, "providers", "auth_providers")
+    return data
 
 
 @functools.lru_cache(maxsize=None)
@@ -60,7 +62,9 @@ def load_security() -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=None)
 def load_rag() -> dict[str, Any]:
-    return _load_yaml(CATALOGS_DIR / "rag.yaml")
+    data = _load_yaml(CATALOGS_DIR / "rag.yaml")
+    _merge_plugins(data, "vector_dbs", "vector_dbs")
+    return data
 
 
 @functools.lru_cache(maxsize=None)

@@ -232,7 +232,7 @@ def test_k8s_rocm_resource_key():
 def test_plugin_loader_skips_disabled():
     from installer import plugins
     d = plugins.discover()
-    assert set(d.keys()) == {"engines", "webuis", "mcp_servers"}
+    assert {"engines", "webuis", "mcp_servers", "vector_dbs", "auth_providers"} <= set(d.keys())
     # The shipped example plugin is disabled => must not appear.
     assert "aphrodite" not in [e["id"] for e in d["engines"]]
 
@@ -326,6 +326,26 @@ def test_supply_chain_classify_pin():
     assert classify_pin("redis") == "mutable"            # no tag => latest
     assert classify_pin("nginx@sha256:abc123") == "digest"
     assert classify_pin("registry:5000/app:1.2.3") == "version"
+
+
+def test_supply_chain_pin_compose():
+    import yaml
+    from installer import supply_chain
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        compose = out / "docker-compose.yml"
+        digest_map = {"postgres:16": "sha256:" + "a" * 64}
+        pinned = supply_chain.pin_compose(compose, digest_map)
+        data = yaml.safe_load(pinned)
+        imgs = [s.get("image") for s in data["services"].values()]
+        assert any(i and i.startswith("postgres@sha256:") for i in imgs)
+        # untouched images keep their tag
+        assert any(i == "redis:7" for i in imgs)
 
 
 def test_supply_chain_audit_on_rendered():

@@ -46,6 +46,13 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
   (Auth-Provider auf K8s bleibt Follow-up). Enterprise rendert 30 K8s-Objekte
 - Smoke-Tests gesamt 30/30
 
+#### Hinzugefügt (Supply-Chain-Härtung + Plugin-Punkte)
+- `supply_chain.pin_compose()` + `scripts/pin-images.sh`: löst Images auf Digests auf →
+  `docker-compose.pinned.yml` (crane/buildx/docker manifest, graceful)
+- `scripts/verify-signatures.sh`: cosign-Signaturprüfung (keyless OIDC), graceful
+- Plugin-Erweiterungspunkte `vector_dbs` + `auth_providers` (Merge in rag/auth-Katalog)
+- Makefile-Targets `pin`/`verify-sigs`; Smoke-Tests gesamt 31/31
+
 
 #### Hinzugefügt
 - **Multi-Modell-Routing**: `inference.models: [{name, role, model}]` rendert eine Engine je

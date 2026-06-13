@@ -7,7 +7,7 @@ SIMULATE ?=
 
 .PHONY: help install preview generate generate-k8s up down logs ps health \
         backup restore update rollback bundle bootstrap-tenants \
-        audit-images scan sbom status eval clean test
+        audit-images scan sbom pin verify-sigs status eval nccl-test clean test
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -66,6 +66,12 @@ scan:  ## Scan images for vulnerabilities (Trivy/Grype)
 
 sbom:  ## Generate CycloneDX SBOMs (Syft)
 	./scripts/generate-sbom.sh $(OUTPUT)
+
+pin:  ## Resolve images to digests -> docker-compose.pinned.yml
+	./scripts/pin-images.sh $(OUTPUT)
+
+verify-sigs:  ## Verify image signatures with cosign
+	./scripts/verify-signatures.sh $(OUTPUT)
 
 nccl-test:  ## Single-node NCCL all-reduce sanity test (Docker)
 	./scripts/nccl-test.sh

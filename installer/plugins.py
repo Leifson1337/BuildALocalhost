@@ -38,7 +38,8 @@ def discover() -> dict[str, list[dict[str, Any]]]:
 
     {'engines': [...], 'webuis': [...], 'mcp_servers': [...]}
     """
-    out: dict[str, list[dict[str, Any]]] = {"engines": [], "webuis": [], "mcp_servers": []}
+    kinds = ("engines", "webuis", "mcp_servers", "vector_dbs", "auth_providers")
+    out: dict[str, list[dict[str, Any]]] = {k: [] for k in kinds}
     if not PLUGINS_DIR.exists():
         return out
     for manifest in sorted(PLUGINS_DIR.glob("*/plugin.yaml")):
@@ -50,7 +51,7 @@ def discover() -> dict[str, list[dict[str, Any]]]:
         if not data.get("enabled", False):
             continue
         provides = data.get("provides", {}) or {}
-        for key in ("engines", "webuis", "mcp_servers"):
+        for key in kinds:
             for entry in provides.get(key, []) or []:
                 if isinstance(entry, dict) and entry.get("id"):
                     entry["_plugin"] = data.get("name", manifest.parent.name)
