@@ -1,0 +1,104 @@
+# Curated starter models by category.
+# These are *suggestions*, not a maintained exhaustive list — Stage 2 adds live HF search.
+# `hf_id` is a concrete default; users may override with any HF id or local path.
+# min_vram_gb is an approximate floor for bf16 serving; quantization lowers it.
+
+categories:
+  chat_instruct:
+    description: General chat / instruct models
+    families: [Qwen, Llama, Mistral, Mixtral, DeepSeek, Gemma, Phi, Yi, Command-R, Falcon]
+    suggestions:
+      - hf_id: Qwen/Qwen2.5-7B-Instruct
+        min_vram_gb: 18
+        recommended_gpus: 1
+        context: 32768
+        gated: false
+      - hf_id: Qwen/Qwen2.5-72B-Instruct
+        min_vram_gb: 160
+        recommended_gpus: 2
+        context: 32768
+        gated: false
+      - hf_id: meta-llama/Llama-3.1-8B-Instruct
+        min_vram_gb: 18
+        recommended_gpus: 1
+        context: 131072
+        gated: true
+      - hf_id: meta-llama/Llama-3.1-70B-Instruct
+        min_vram_gb: 160
+        recommended_gpus: 2
+        context: 131072
+        gated: true
+      - hf_id: mistralai/Mistral-7B-Instruct-v0.3
+        min_vram_gb: 18
+        recommended_gpus: 1
+        context: 32768
+        gated: true
+
+  reasoning:
+    families: [DeepSeek-R1, QwQ, Qwen]
+    suggestions:
+      - hf_id: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+        min_vram_gb: 72
+        recommended_gpus: 1
+        context: 131072
+        gated: false
+
+  code:
+    families: [Qwen-Coder, DeepSeek-Coder, StarCoder, CodeLlama, Codestral]
+    suggestions:
+      - hf_id: Qwen/Qwen2.5-Coder-32B-Instruct
+        min_vram_gb: 72
+        recommended_gpus: 1
+        context: 131072
+        gated: false
+      - hf_id: Qwen/Qwen2.5-Coder-7B-Instruct
+        min_vram_gb: 18
+        recommended_gpus: 1
+        context: 131072
+        gated: false
+
+  multimodal_vision:
+    families: [Qwen-VL, LLaVA, InternVL, Phi-Vision]
+    suggestions:
+      - hf_id: Qwen/Qwen2-VL-7B-Instruct
+        min_vram_gb: 24
+        recommended_gpus: 1
+        context: 32768
+        gated: false
+
+  embeddings:
+    families: [BGE, E5, Jina, Nomic, Snowflake-Arctic]
+    suggestions:
+      - hf_id: BAAI/bge-m3
+        min_vram_gb: 4
+        recommended_gpus: 1
+        gated: false
+      - hf_id: intfloat/multilingual-e5-large
+        min_vram_gb: 4
+        recommended_gpus: 1
+        gated: false
+
+  reranker:
+    families: [BGE-Reranker, Jina-Reranker]
+    suggestions:
+      - hf_id: BAAI/bge-reranker-v2-m3
+        min_vram_gb: 4
+        recommended_gpus: 1
+        gated: false
+
+  small_fast:
+    families: [Qwen, Llama, Phi, Gemma]
+    suggestions:
+      - hf_id: Qwen/Qwen2.5-1.5B-Instruct
+        min_vram_gb: 6
+        recommended_gpus: 1
+        context: 32768
+        gated: false
+
+# Default selections per profile goal (used when --non-interactive).
+defaults:
+  high_throughput_chat: Qwen/Qwen2.5-7B-Instruct
+  many_users:           Qwen/Qwen2.5-7B-Instruct
+  low_latency:          Qwen/Qwen2.5-1.5B-Instruct
+  highest_quality:      Qwen/Qwen2.5-72B-Instruct
+  development:          Qwen/Qwen2.5-1.5B-Instruct

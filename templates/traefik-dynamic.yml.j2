@@ -1,0 +1,27 @@
+# GENERATED Traefik dynamic config — Profile: {{ profile_name }}
+# Security middlewares applied to public routers (see docs/SECURITY.md).
+http:
+  middlewares:
+    secure-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+{% if rate_limits %}
+    ratelimit:
+      rateLimit:
+        average: {{ rate_limit_per_minute }}
+        period: 1m
+        burst: {{ (rate_limit_per_minute * 2) | int }}
+{% endif %}
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      sniStrict: true

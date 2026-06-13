@@ -1,0 +1,12 @@
+# Installer dependencies (Stage 1).
+# Kept minimal and pure-Python so the wizard runs on any OS for simulation/dry-run.
+typer>=0.12,<1.0
+rich>=13.7
+questionary>=2.0
+PyYAML>=6.0
+Jinja2>=3.1
+requests>=2.31
+# GPU detection is optional; absence triggers graceful fallback (simulation only).
+nvidia-ml-py>=12.560 ; platform_system == "Linux"
+# Live HF model search (used in Stage 2; harmless to install now).
+huggingface_hub>=0.25

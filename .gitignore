@@ -1,0 +1,41 @@
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Generated stack output (never commit real deployments / secrets) ---
+/output/
+/generated/
+*.generated.yml
+docker-compose.yml
+.env
+.env.*
+!.env.example
+
+# --- Runtime / data ---
+/data/
+/configs/letsencrypt/
+acme.json
+
+# --- Secrets ---
+*.key
+*.pem
+*.crt
+secrets/
+*.secret.yaml
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- Logs ---
+*.log
+/logs/

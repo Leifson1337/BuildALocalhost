@@ -1,0 +1,69 @@
+# Profile: production
+# vLLM + LiteLLM + Open WebUI behind Traefik (TLS), with full monitoring and rate limits.
+# Requires domains + ACME email (asked in wizard / set in .env).
+
+profile_name: production
+description: Production single-node stack — TLS, auth keys, rate limits, monitoring.
+
+runtime:
+  type: docker_compose
+  nvidia_container_toolkit: true
+
+inference:
+  engine: vllm
+  model: null
+  dtype: bfloat16
+  tensor_parallel_size: auto
+  pipeline_parallel_size: 1
+  gpu_memory_utilization: 0.90
+  enable_prefix_caching: true
+  enable_chunked_prefill: true
+  max_model_len: auto
+
+gateway:
+  type: litellm
+  openai_compatible: true
+  rate_limits: true
+  per_user_keys: true
+  router:
+    routing_strategy: latency-based-routing
+    num_retries: 2
+    timeout: 120
+
+web:
+  reverse_proxy: traefik
+  tls: letsencrypt            # ACME TLS challenge
+  auth: litellm_keys          # SSO added in Stage 2
+  domains:
+    api: null                 # e.g. api.example.com  (asked in wizard)
+    webui: null               # e.g. chat.example.com
+    grafana: null             # e.g. grafana.example.com
+  ui:
+    - open-webui
+
+rag:
+  enabled: false              # Stage 2
+
+mcp:
+  enabled: false              # Stage 2
+
+monitoring:
+  enabled: true
+  prometheus: true
+  grafana: true
+  dcgm_exporter: true
+  node_exporter: true
+  cadvisor: true
+
+security:
+  profile: public_secure
+  expose_only_reverse_proxy: true
+  internal_networks: true
+  no_direct_gpu_api_exposure: true
+  audit_logs: true
+  rate_limit_per_minute: 60
+  max_context_tokens: 32768
+  max_output_tokens: 4096
+  # Known Stage-1 caveat: Traefik mounts the Docker socket read-only.
+  # Stage 2 replaces this with a docker-socket-proxy. Flagged in preview.
+  docker_socket_warning: true

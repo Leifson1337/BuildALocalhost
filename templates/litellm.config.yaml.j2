@@ -1,0 +1,31 @@
+# GENERATED LiteLLM config — Profile: {{ profile_name }}
+# All UIs/clients talk to LiteLLM; engines stay on the internal network (ADR-0005).
+
+model_list:
+  - model_name: main-chat
+    litellm_params:
+      model: openai/{{ model }}
+      api_base: http://inference:{{ engine_port }}/v1
+      api_key: "dummy"          # engine has no auth; it is internal-only
+
+general_settings:
+  master_key: ${LITELLM_MASTER_KEY}
+  database_url: ${DATABASE_URL}
+{% if rate_limits %}
+  # Per-key rate limiting (tune in LiteLLM admin / virtual keys).
+  max_parallel_requests: 100
+{% endif %}
+
+router_settings:
+  routing_strategy: latency-based-routing
+  num_retries: 2
+  timeout: 120
+  redis_host: redis
+  redis_port: 6379
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 600
+{% if rate_limits %}
+  max_budget: null
+{% endif %}

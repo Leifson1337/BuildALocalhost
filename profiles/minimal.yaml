@@ -1,0 +1,53 @@
+# Profile: minimal
+# vLLM + LiteLLM + Open WebUI, local only. No TLS, no public exposure, no monitoring.
+# Intended for a single developer on one box.
+
+profile_name: minimal
+description: Minimal local stack — one model, local access, no public hosting.
+
+runtime:
+  type: docker_compose
+  nvidia_container_toolkit: true
+
+inference:
+  engine: vllm
+  model: null                 # resolved from goal/catalog or user input
+  dtype: bfloat16
+  tensor_parallel_size: auto  # resolved by recommend.py
+  pipeline_parallel_size: 1
+  gpu_memory_utilization: 0.90
+  enable_prefix_caching: true
+  max_model_len: auto
+
+gateway:
+  type: litellm
+  openai_compatible: true
+  rate_limits: false
+  per_user_keys: false
+
+web:
+  reverse_proxy: none         # access LiteLLM/Open WebUI on localhost ports directly
+  tls: false
+  auth: none
+  expose:
+    open_webui_port: 3000     # host port → open-webui:8080
+    litellm_port: 4000        # host port → litellm:4000 (localhost bind)
+  ui:
+    - open-webui
+
+rag:
+  enabled: false
+
+mcp:
+  enabled: false
+
+monitoring:
+  enabled: false
+
+security:
+  profile: local_only
+  bind: 127.0.0.1             # do NOT expose beyond localhost in this profile
+  expose_only_reverse_proxy: false
+  internal_networks: true
+  no_direct_gpu_api_exposure: true
+  audit_logs: false

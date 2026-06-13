@@ -1,0 +1,132 @@
+# GPU hardware catalog.
+# Real values from NVML/nvidia-smi always take precedence over these defaults
+# (see ADR-0006). Catalog values are used for simulation and as fallbacks only.
+#
+# vram_gb: typical per-GPU VRAM for the most common SKU of that model.
+# class: datacenter_high | datacenter_mid | consumer | accelerator | cpu_only
+# default_interconnect: best-case interconnect for a multi-GPU node of this model.
+
+nvidia:
+  hopper:
+    - model: H100 SXM
+      aliases: [h100, h100sxm, h100-sxm]
+      vram_gb: 80
+      class: datacenter_high
+      default_interconnect: nvswitch
+      precision: [bfloat16, fp16, fp8]
+    - model: H100 PCIe
+      aliases: [h100pcie, h100-pcie]
+      vram_gb: 80
+      class: datacenter_high
+      default_interconnect: pcie
+      precision: [bfloat16, fp16, fp8]
+    - model: H200
+      aliases: [h200]
+      vram_gb: 141
+      class: datacenter_high
+      default_interconnect: nvswitch
+      precision: [bfloat16, fp16, fp8]
+
+  blackwell:
+    - model: B100
+      aliases: [b100]
+      vram_gb: 192
+      class: datacenter_high
+      default_interconnect: nvswitch
+      precision: [bfloat16, fp8, fp4]
+    - model: B200
+      aliases: [b200]
+      vram_gb: 192
+      class: datacenter_high
+      default_interconnect: nvswitch
+      precision: [bfloat16, fp8, fp4]
+    - model: B300
+      aliases: [b300]
+      vram_gb: 288        # catalog estimate; NVML preferred. Flagged non-authoritative.
+      authoritative: false
+      class: datacenter_high
+      default_interconnect: nvswitch
+      precision: [bfloat16, fp8, fp4, nvfp4]
+    - model: GB200
+      aliases: [gb200]
+      vram_gb: 192
+      class: datacenter_high
+      default_interconnect: nvswitch
+      precision: [bfloat16, fp8, fp4]
+    - model: GB300 NVL72
+      aliases: [gb300, gb300nvl72]
+      vram_gb: 288        # rack-scale; per-GPU estimate. NVML preferred.
+      authoritative: false
+      class: datacenter_high
+      default_interconnect: nvswitch
+      rack_scale: true
+      precision: [bfloat16, fp8, fp4, nvfp4]
+
+  ada:
+    - model: RTX 6000 Ada
+      aliases: [rtx6000ada, rtx-6000-ada]
+      vram_gb: 48
+      class: datacenter_mid
+      default_interconnect: pcie
+      precision: [bfloat16, fp16, fp8]
+    - model: RTX 4090
+      aliases: [rtx4090, 4090]
+      vram_gb: 24
+      class: consumer
+      default_interconnect: pcie
+      precision: [bfloat16, fp16]
+
+  ampere:
+    - model: A100 SXM 80GB
+      aliases: [a100, a100sxm, a100-80gb]
+      vram_gb: 80
+      class: datacenter_mid
+      default_interconnect: nvswitch
+      precision: [bfloat16, fp16]
+      mig_capable: true
+    - model: A40
+      aliases: [a40]
+      vram_gb: 48
+      class: datacenter_mid
+      default_interconnect: pcie
+      precision: [bfloat16, fp16]
+    - model: RTX 3090
+      aliases: [rtx3090, 3090]
+      vram_gb: 24
+      class: consumer
+      default_interconnect: pcie
+      precision: [fp16]
+
+amd:
+  cdna:
+    - model: MI300X
+      aliases: [mi300x]
+      vram_gb: 192
+      class: accelerator
+      default_interconnect: infinity_fabric
+      precision: [bfloat16, fp16, fp8]
+      runtime: rocm
+    - model: MI325X
+      aliases: [mi325x]
+      vram_gb: 256
+      class: accelerator
+      default_interconnect: infinity_fabric
+      precision: [bfloat16, fp16, fp8]
+      runtime: rocm
+
+# Used when a simulate/manual model is unknown.
+custom_fallback:
+  model: Custom GPU
+  vram_gb: 24
+  class: consumer
+  default_interconnect: unknown
+  precision: [bfloat16, fp16]
+
+# Interconnect → recommended parallelism hint (consumed by recommend.py).
+interconnect_parallelism:
+  nvswitch:        tensor_parallel
+  nvlink:          tensor_parallel
+  infinity_fabric: tensor_parallel
+  infiniband:      pipeline_parallel    # multi-node
+  pcie:            data_parallel_replicas
+  unknown:         data_parallel_replicas

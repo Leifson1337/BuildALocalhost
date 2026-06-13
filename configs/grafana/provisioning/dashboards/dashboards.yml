@@ -1,0 +1,11 @@
+# Grafana dashboard provider. Drop dashboard JSON files in this directory; they load on start.
+apiVersion: 1
+providers:
+  - name: ai-stack
+    orgId: 1
+    folder: "AI Stack"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards

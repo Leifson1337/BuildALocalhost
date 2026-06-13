@@ -1,0 +1,121 @@
+# Serving engine catalog.
+# Data-driven: the installer reads this; no engine logic is hard-coded in Python.
+# `image` values are pinned where sensible; ":latest" is flagged for Stage 3 hardening.
+
+engines:
+  - id: vllm
+    name: vLLM
+    default: true
+    api: openai-compatible
+    image: vllm/vllm-openai:v0.6.6
+    default_port: 8000
+    gpu: required
+    supports:
+      tensor_parallel: true
+      pipeline_parallel: true
+      prefix_caching: true
+      continuous_batching: true
+      quantization: [awq, gptq, fp8, bitsandbytes]
+      multimodal: true
+    best_for:
+      - high throughput
+      - multi gpu
+      - OpenAI-compatible serving
+      - large model serving
+    notes: >
+      Default for H100-class throughput. PagedAttention + continuous batching.
+
+  - id: sglang
+    name: SGLang
+    default: false
+    api: openai-compatible
+    image: lmsysorg/sglang:latest
+    default_port: 30000
+    gpu: required
+    supports:
+      tensor_parallel: true
+      pipeline_parallel: false
+      prefix_caching: true
+      continuous_batching: true
+      quantization: [awq, gptq, fp8]
+      multimodal: true
+    best_for:
+      - low latency
+      - prefix caching
+      - agentic workloads
+      - multi-modal workloads
+
+  - id: tgi
+    name: Hugging Face Text Generation Inference
+    default: false
+    api: openai-compatible
+    image: ghcr.io/huggingface/text-generation-inference:3.0.1
+    default_port: 80
+    gpu: required
+    supports:
+      tensor_parallel: true
+      pipeline_parallel: false
+      prefix_caching: false
+      continuous_batching: true
+      quantization: [awq, gptq, eetq, bitsandbytes]
+      multimodal: true
+    best_for:
+      - Hugging Face-native deployments
+      - production text generation
+      - tensor parallelism
+
+  - id: nim
+    name: NVIDIA NIM
+    default: false
+    api: vendor-container
+    image: "nvcr.io/nim/<vendor>/<model>:latest"   # requires NGC auth + per-model image
+    default_port: 8000
+    gpu: required
+    supports:
+      tensor_parallel: true
+      quantization: [fp8, fp4]
+      multimodal: true
+    best_for:
+      - enterprise
+      - validated NVIDIA containers
+      - supportability
+    notes: >
+      Requires NGC API key and per-model images; resolved interactively in Stage 2.
+
+  - id: ollama
+    name: Ollama
+    default: false
+    api: openai-compatible-bridge
+    image: ollama/ollama:0.5.4
+    default_port: 11434
+    gpu: optional
+    supports:
+      tensor_parallel: false
+      quantization: [gguf, q4_k_m, q5_k_m, q8_0]
+      multimodal: true
+    best_for:
+      - simple local testing
+      - small and medium models
+      - developer convenience
+
+  - id: llama_cpp
+    name: llama.cpp server
+    default: false
+    api: openai-compatible
+    image: ghcr.io/ggerganov/llama.cpp:server
+    default_port: 8080
+    gpu: optional
+    supports:
+      tensor_parallel: false
+      quantization: [gguf]
+    best_for:
+      - GGUF models
+      - CPU/GPU hybrid
+      - lightweight deployments
+
+# Preference order by GPU class (used by recommend.py as a tie-breaker, not a hard rule).
+preference_by_class:
+  datacenter_high: [vllm, sglang, tgi, nim, ollama, llama_cpp]   # H100/H200/B200/B300
+  datacenter_mid:  [vllm, sglang, tgi, ollama, llama_cpp]        # A100/A40
+  consumer:        [vllm, ollama, llama_cpp, sglang]             # RTX 4090/3090
+  cpu_only:        [llama_cpp, ollama]

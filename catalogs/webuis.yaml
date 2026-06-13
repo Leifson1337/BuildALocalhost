@@ -1,0 +1,56 @@
+# Web UI catalog. Stage 1 wires Open WebUI; others are catalogued for Stage 2.
+
+webuis:
+  - id: open-webui
+    name: Open WebUI
+    default: true
+    image: ghcr.io/open-webui/open-webui:main
+    internal_port: 8080
+    connects_via: openai-compatible     # talks to LiteLLM /v1
+    supports: [openai-compatible, ollama, rag, offline]
+    stage: 1
+
+  - id: anythingllm
+    name: AnythingLLM
+    default: false
+    image: mintplexlabs/anythingllm:latest
+    internal_port: 3001
+    connects_via: openai-compatible
+    supports: [rag, agents, document-workspaces, many-providers]
+    stage: 2
+
+  - id: librechat
+    name: LibreChat
+    default: false
+    image: ghcr.io/danny-avila/librechat:latest
+    internal_port: 3080
+    connects_via: openai-compatible
+    supports: [openai-compatible, multi-user, assistants-ux]
+    stage: 2
+
+  - id: lobe-chat
+    name: LobeChat
+    default: false
+    image: lobehub/lobe-chat:latest
+    internal_port: 3210
+    connects_via: openai-compatible
+    supports: [plugins, multi-provider]
+    stage: 2
+
+  - id: dify
+    name: Dify
+    default: false
+    image: langgenius/dify-web:latest
+    internal_port: 3000
+    connects_via: openai-compatible
+    supports: [workflows, rag, apps, agents]
+    stage: 2
+
+  - id: flowise
+    name: Flowise
+    default: false
+    image: flowiseai/flowise:latest
+    internal_port: 3000
+    connects_via: openai-compatible
+    supports: [visual-langchain, agent-workflows]
+    stage: 2
