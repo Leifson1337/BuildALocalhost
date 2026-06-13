@@ -57,6 +57,10 @@ def render(cfg: ResolvedConfig, output_dir: Path) -> list[Path]:
         (output_dir / "configs" / "traefik").mkdir(parents=True, exist_ok=True)
         written.append(_write(output_dir / "configs" / "traefik" / "dynamic.yml",
                               env.get_template("traefik-dynamic.yml.j2").render(**ctx)))
+    if ctx["rag"]["enabled"]:
+        (output_dir / "configs" / "rag").mkdir(parents=True, exist_ok=True)
+        written.append(_write(output_dir / "configs" / "rag" / "config.yaml",
+                              env.get_template("rag-config.yaml.j2").render(**ctx)))
     if ctx["mcp"]["enabled"]:
         (output_dir / "configs" / "mcp").mkdir(parents=True, exist_ok=True)
         written.append(_write(output_dir / "configs" / "mcp" / "policies.yaml",
@@ -231,10 +235,23 @@ def _rag_context(cfg: ResolvedConfig) -> dict[str, Any]:
     rer = rag_cat["reranker"]["serving"]
     runtime_kind = cfg.runtime_kind
     tei_image = tei.get("image_cpu") if runtime_kind == "cpu" and tei.get("image_cpu") else tei["image"]
+
+    # Allow ${ENV:-default} image overrides (e.g. LEANN_IMAGE for an unverified wrapper image).
+    vdb_image = vdb["image"]
+    if vdb.get("image_env"):
+        vdb_image = "${" + vdb["image_env"] + ":-" + vdb["image"] + "}"
+    data_path = "/qdrant/storage" if vdb_id == "qdrant" else "/data"
+
+    quant = rd.get("vector_quantization", "none")
+    quality = {**rag_cat.get("quality_defaults", {}), **(rd.get("quality", {}) or {})}
+
     return {
         "enabled": True,
-        "vector_db": {"id": vdb["id"], "image": vdb["image"],
-                      "port": vdb.get("internal_port"), "volume": vdb.get("volume")},
+        "vector_db": {"id": vdb["id"], "image": vdb_image,
+                      "port": vdb.get("internal_port"), "volume": vdb.get("volume"),
+                      "data_path": data_path},
+        "vector_quantization": quant,
+        "quality": quality,
         "embeddings": {"image": tei_image, "port": tei["internal_port"],
                        "model": rd.get("embeddings_model", rag_cat["embeddings"]["default_model"])},
         "reranker": {"image": rer["image"], "port": rer["internal_port"],

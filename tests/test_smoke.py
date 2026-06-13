@@ -160,6 +160,28 @@ def test_socket_proxy_replaces_raw_socket():
         assert "docker-socket-proxy" in text
 
 
+def test_rag_efficient_leann_turboquant():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "rag")
+    cfg = profile_builder.build(profile_name="rag_efficient", system=system,
+                                recommendation=rec, goal="rag")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+        assert "vectordb" in doc["services"]
+        assert "LEANN_IMAGE" in doc["services"]["vectordb"]["image"]   # overridable image
+        ragcfg = yaml.safe_load((out / "configs" / "rag" / "config.yaml").read_text(encoding="utf-8"))
+        assert ragcfg["vector_db"] == "leann"
+        assert ragcfg["vector_quantization"] == "turboquant"
+        assert ragcfg["retrieval"]["hybrid_search"] is True
+        # validator flags external method (non-fatal)
+        issues = validators.validate(cfg, check_ports=False)
+        assert any(i.code == "rag.verify_image" for i in issues)
+        assert not validators.has_fatal(issues)
+
+
 def test_tuning_maximizes_replicas():
     from installer import tuning
     system = build_simulation("8xH100")

@@ -37,6 +37,7 @@ def validate(cfg: ResolvedConfig, *, check_ports: bool = True) -> list[Issue]:
     issues += _check_mcp(cfg)
     issues += _check_policy(cfg)
     issues += _check_supply_chain(cfg)
+    issues += _check_rag(cfg)
     issues += _check_public_exposure(cfg)
     if check_ports:
         issues += _check_ports(cfg)
@@ -239,6 +240,28 @@ def _check_mcp(cfg: ResolvedConfig) -> list[Issue]:
                                 f"Dangerous MCP server '{srv_id}' is not allowed under security "
                                 f"profile '{cfg.security_profile_id}'. Enable it only on local_only "
                                 "or with explicit override."))
+    return issues
+
+
+def _check_rag(cfg: ResolvedConfig) -> list[Issue]:
+    """Flag external RAG efficiency methods (LEANN/TurboQuant/TurboVec) for image/integration verify."""
+    if not cfg.rag_enabled:
+        return []
+    issues: list[Issue] = []
+    rd = cfg.data.get("rag", {})
+    rag_cat = catalog.load_rag()
+    vdb_id = rd.get("vector_db", "qdrant")
+    vdb = next((v for v in rag_cat.get("vector_dbs", []) if v.get("id") == vdb_id), {})
+    if vdb.get("verify_image"):
+        issues.append(Issue("warning", "rag.verify_image",
+                            f"Vector index '{vdb_id}' uses a placeholder/unverified image "
+                            f"(override via ${{{vdb.get('image_env', 'IMAGE')}}}). Build/verify before production."))
+    quant = rd.get("vector_quantization", "none")
+    qmeta = next((q for q in rag_cat.get("vector_quantization", []) if q.get("id") == quant), {})
+    if qmeta.get("verify_integration"):
+        issues.append(Issue("info", "rag.quant_external",
+                            f"Vector quantization '{quant}' is an external method — verify the "
+                            "library/integration; it falls back to no quantization if unavailable."))
     return issues
 
 

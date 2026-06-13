@@ -145,3 +145,13 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - LiteLLM verteilt Last ueber Replicas (gleicher model_name); Compose nutzt device_ids,
   K8s setzt Deployment-replicas; UTF-8-Stdout abgehaertet
 - Smoke-Tests gesamt 34/34
+
+### Stufe 3 (Forts.) — Effizienter RAG (LEANN/TurboQuant/TurboVec)
+
+- `catalogs/rag.yaml`: LEANN (low-storage Graph-Index, overridable ${LEANN_IMAGE}),
+  Vektor-Quantisierung scalar/product/binary/turboquant/turbovec, Quality-Defaults
+  (Hybrid-Suche, Reranking, Citations, Chunking)
+- Profil `rag_efficient.yaml` (LEANN + TurboQuant + Reranker + Hybrid)
+- `configs/rag/config.yaml` generiert; Validator-Warnung fuer externe/unverifizierte
+  Methoden (verify_image/verify_integration), nicht fatal; faellt sauber zurueck
+- Smoke-Tests gesamt 35/35

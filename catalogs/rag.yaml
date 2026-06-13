@@ -28,6 +28,52 @@ vector_dbs:
     image: chromadb/chroma:0.5.20
     internal_port: 8000
     volume: chroma_data
+  - id: leann
+    name: LEANN (low-storage graph vector index)
+    # LEANN is primarily a library (graph index that recomputes embeddings to cut storage
+    # ~97%). Served here via a thin wrapper image. SET/BUILD the real image and verify the
+    # API; the default below is a placeholder (overridable via ${LEANN_IMAGE}).
+    image: "leann/leann-server:latest"
+    image_env: LEANN_IMAGE
+    internal_port: 8000
+    volume: leann_data
+    kind: low_storage_graph_index
+    verify_image: true
+    best_for: [low storage, personal/large corpora, edge]
+
+# Vector quantization / compression strategies for the index (storage + speed).
+# scalar/product/binary are native to several DBs (e.g. Qdrant). turboquant/turbovec are
+# external efficiency methods — selectable, but flagged to verify the integration.
+vector_quantization:
+  - id: none
+    name: Keine (volle Präzision)
+  - id: scalar
+    name: Scalar quantization (int8)
+    native: [qdrant]
+  - id: product
+    name: Product quantization
+    native: [qdrant]
+  - id: binary
+    name: Binary quantization (schnellster, grobster)
+    native: [qdrant]
+  - id: turboquant
+    name: TurboQuant (data-oblivious quantization)
+    external: true
+    verify_integration: true
+    best_for: [maximale Vektor-Kompression]
+  - id: turbovec
+    name: TurboVec (vektorisierte/quantisierte Suche)
+    external: true
+    verify_integration: true
+    best_for: [maximaler Suchdurchsatz]
+
+# Best-practice RAG quality switches (applied by the efficient preset).
+quality_defaults:
+  hybrid_search: true        # dense + sparse (BM25) retrieval
+  reranking: true
+  source_citations: true
+  chunk_size: 512
+  chunk_overlap: 64
 
 # Embedding + reranker served via HF Text Embeddings Inference (TEI), OpenAI-ish API.
 embeddings:

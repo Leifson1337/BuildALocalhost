@@ -1,0 +1,21 @@
+# GENERATED RAG config — Profile: {{ profile_name }}
+# Documents the efficient-RAG pipeline. Consumed by the RAG/document app + as reference.
+vector_db: {{ rag.vector_db.id }}
+vector_quantization: {{ rag.vector_quantization }}
+
+embeddings:
+  model: {{ rag.embeddings.model }}
+  endpoint: http://embeddings:{{ rag.embeddings.port }}
+reranker:
+  model: {{ rag.reranker.model }}
+  endpoint: http://reranker:{{ rag.reranker.port }}
+
+retrieval:
+  hybrid_search: {{ rag.quality.get("hybrid_search", true) | lower }}
+  reranking: {{ rag.quality.get("reranking", true) | lower }}
+  source_citations: {{ rag.quality.get("source_citations", true) | lower }}
+  chunk_size: {{ rag.quality.get("chunk_size", 512) }}
+  chunk_overlap: {{ rag.quality.get("chunk_overlap", 64) }}
+
+# NOTE: 'leann' index and 'turboquant'/'turbovec' quantization are storage/compute-efficient
+# but external — verify the container image / library integration before production use.

@@ -287,11 +287,11 @@ services:
 
 {% if rag.enabled %}
   # --- RAG stack ------------------------------------------------------------
-  vectordb:
+  vectordb:                    # {{ rag.vector_db.id }} (quantization: {{ rag.vector_quantization }})
     image: {{ rag.vector_db.image }}
 {% if rag.vector_db.volume %}
     volumes:
-      - {{ rag.vector_db.volume }}:/qdrant/storage
+      - {{ rag.vector_db.volume }}:{{ rag.vector_db.data_path }}
 {% endif %}
     networks: [internal]
     restart: unless-stopped

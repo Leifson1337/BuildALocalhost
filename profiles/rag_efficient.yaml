@@ -1,0 +1,69 @@
+# Profile: rag_efficient
+# Maximally storage/compute-efficient RAG: LEANN low-storage index + TurboQuant vector
+# quantization + reranker + hybrid search. NOTE: LEANN/TurboQuant/TurboVec are external
+# efficiency methods — verify the container image / integration before production
+# (see configs/rag/config.yaml + docs). Falls back cleanly to qdrant if you change vector_db.
+
+profile_name: rag_efficient
+description: Effizientester RAG — LEANN + TurboQuant + Reranker + Hybrid-Suche.
+
+runtime:
+  type: docker_compose
+  nvidia_container_toolkit: true
+
+inference:
+  engine: vllm
+  dtype: bfloat16
+  tensor_parallel_size: auto
+  pipeline_parallel_size: 1
+  gpu_memory_utilization: auto
+  enable_prefix_caching: true
+  max_model_len: auto
+
+gateway:
+  type: litellm
+  openai_compatible: true
+  rate_limits: true
+  per_user_keys: true
+
+web:
+  reverse_proxy: traefik
+  tls: letsencrypt
+  auth: litellm_keys
+  domains: {api: null, webui: null, grafana: null}
+  ui: [open-webui]
+
+rag:
+  enabled: true
+  vector_db: leann                 # low-storage graph index (recomputes embeddings)
+  vector_quantization: turboquant  # maximale Vektor-Kompression (extern; Integration prüfen)
+  embeddings_model: BAAI/bge-m3
+  reranker_model: BAAI/bge-reranker-v2-m3
+  document_app: anythingllm
+  quality:
+    hybrid_search: true
+    reranking: true
+    source_citations: true
+    chunk_size: 512
+    chunk_overlap: 64
+
+mcp:
+  enabled: false
+
+monitoring:
+  enabled: true
+  prometheus: true
+  grafana: true
+  dcgm_exporter: true
+  node_exporter: true
+  cadvisor: true
+
+security:
+  profile: public_secure
+  expose_only_reverse_proxy: true
+  internal_networks: true
+  no_direct_gpu_api_exposure: true
+  audit_logs: true
+  rate_limit_per_minute: 60
+  max_context_tokens: 32768
+  max_output_tokens: 4096
