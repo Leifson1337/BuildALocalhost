@@ -1,0 +1,60 @@
+# Auth provider catalog. All providers are selectable in the wizard (user choice).
+# `none` and `litellm_keys` add no extra service; the others run as containers.
+#
+# forward_auth: provider integrates with Traefik via forward-auth middleware.
+# needs_db / needs_redis: provider requires shared postgres / redis.
+
+providers:
+  - id: none
+    name: Keine (offen / nur lokal)
+    service: false
+    forward_auth: false
+    stage: 2
+    notes: Only valid for local_only / development.
+
+  - id: litellm_keys
+    name: LiteLLM API-Keys (virtuelle Keys, Budgets)
+    service: false
+    forward_auth: false
+    stage: 2
+    notes: >
+      Per-key access, budgets, rate limits handled by the LiteLLM gateway itself.
+      Simplest option; no separate identity service.
+
+  - id: authelia
+    name: Authelia (leichtgewichtiges SSO + Forward-Auth)
+    service: true
+    image: authelia/authelia:4.38
+    internal_port: 9091
+    forward_auth: true
+    needs_redis: true
+    stage: 2
+    notes: Lightweight; integrates with Traefik forward-auth. Good middle ground.
+
+  - id: authentik
+    name: Authentik (vollwertiges Identity/OIDC/SAML)
+    service: true
+    image: ghcr.io/goauthentik/server:2024.10
+    internal_port: 9000
+    forward_auth: true
+    needs_db: true
+    needs_redis: true
+    stage: 2
+    notes: Full IdP (OIDC/SAML), server+worker. Enterprise-grade, heavier.
+
+  - id: keycloak
+    name: Keycloak (etabliertes Identity)
+    service: true
+    image: quay.io/keycloak/keycloak:26.0
+    internal_port: 8080
+    forward_auth: false      # OIDC via oauth2-proxy (added with this provider)
+    needs_db: true
+    stage: 2
+    notes: Established IdP. Uses shared postgres; pair with oauth2-proxy for forward-auth.
+
+# Which auth providers are sensible per security profile (advisory, not enforced).
+recommended_by_security_profile:
+  local_only:            [none, litellm_keys]
+  private_lan:           [litellm_keys, authelia]
+  public_secure:         [litellm_keys, authelia, authentik, keycloak]
+  enterprise_zero_trust: [authentik, keycloak]

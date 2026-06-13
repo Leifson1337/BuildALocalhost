@@ -114,6 +114,60 @@ it with a **Docker-Socket-Proxy** (or static file provider).
 
 ---
 
+## ADR-0010 — Auth provider is user-selectable, not fixed
+
+**Context:** User asked for "all auth providers, selectable".
+
+**Decision:** `catalogs/auth.yaml` lists `none`, `litellm_keys`, `authelia`, `authentik`,
+`keycloak`. The wizard offers all (with per-security-profile recommendations); the renderer
+emits the chosen provider's services. Authelia integrates via Traefik forward-auth;
+Authentik runs server+worker on shared Postgres/Redis; Keycloak uses shared Postgres.
+
+**Consequences:** Flexible. Authentik/Keycloak realm/flow bootstrap is still manual (flagged
+in ROADMAP); secrets are auto-generated into `.env` per provider.
+
+---
+
+## ADR-0011 — Compatibility by inferred model "kind", not per-model rows
+
+**Context:** A per-model compatibility table rots; thousands of models exist.
+
+**Decision:** `catalogs/compatibility.yaml` declares engine support per *format kind*
+(gguf/awq/gptq/fp8/vision/embedding/safetensors_default) and infers a model's kind from its
+id via substring hints. Validators reject impossible combos (e.g. GGUF on vLLM = fatal) and
+gate precision by GPU architecture.
+
+**Consequences:** Robust to new models; occasional false "unverified" warnings are acceptable
+and non-fatal.
+
+---
+
+## ADR-0012 — AMD ROCm as a first-class runtime
+
+**Context:** User wants AMD ROCm included in Stage 2.
+
+**Decision:** `SystemProfile.runtime_kind` ∈ {cuda, rocm, cpu} from GPU vendor. The renderer
+selects `image_rocm` when present and emits ROCm GPU access (`/dev/kfd`, `/dev/dri`,
+`group_add: video`) instead of the NVIDIA device reservation. DCGM exporter (NVIDIA-only) is
+omitted on ROCm.
+
+**Consequences:** vLLM/SGLang/TGI ROCm images supported; AMD GPU metrics need a different
+exporter (deferred). NIM stays CUDA-only.
+
+---
+
+## ADR-0013 — Single compose template scales via conditionals (revisit threshold)
+
+**Context:** Stage 2 added many optional services (RAG, MCP, 3 auth providers, socket proxy).
+
+**Decision:** Keep the single `docker-compose.yml.j2` with conditional blocks for now; it
+still renders and validates (`docker compose config`) across all 6 profiles × {cuda, rocm}.
+
+**Consequences:** If the template keeps growing in Stage 3 (K8s export, multi-node), split
+into Jinja includes/partials. Tracked as a refactor trigger, not done preemptively.
+
+---
+
 ## Open decisions (to be asked, not assumed)
 
 Tracked in `ROADMAP.md` → "Offene Fragen". Will be raised when the relevant stage is reached:

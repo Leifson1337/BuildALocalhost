@@ -69,6 +69,18 @@ class SystemProfile:
             return "cpu_only"
         return self.primary_gpu.gpu_class or "consumer"
 
+    @property
+    def runtime_kind(self) -> str:
+        """GPU runtime family used to pick container images: cuda | rocm | cpu."""
+        if not self.gpus:
+            return "cpu"
+        vendor = self.primary_gpu.vendor
+        if vendor == "amd":
+            return "rocm"
+        if vendor == "nvidia":
+            return "cuda"
+        return "cpu"
+
 
 # --------------------------------------------------------------------------- builders
 

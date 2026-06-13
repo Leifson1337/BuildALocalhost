@@ -1,0 +1,55 @@
+# RAG stack catalog (Stage 2). Vector DBs, embedding/reranker serving, document apps.
+
+vector_dbs:
+  - id: qdrant
+    name: Qdrant
+    default: true
+    image: qdrant/qdrant:v1.12.4
+    internal_port: 6333
+    volume: qdrant_data
+  - id: weaviate
+    name: Weaviate
+    image: semitechnologies/weaviate:1.27.0
+    internal_port: 8080
+    volume: weaviate_data
+  - id: milvus
+    name: Milvus
+    image: milvusdb/milvus:v2.5.0
+    internal_port: 19530
+    volume: milvus_data
+    notes: Requires etcd + minio; heavier — wizard warns.
+  - id: pgvector
+    name: pgvector (in shared Postgres)
+    image: pgvector/pgvector:pg16     # replaces postgres image when selected
+    internal_port: 5432
+    notes: Reuses the shared Postgres; no extra container.
+  - id: chroma
+    name: Chroma
+    image: chromadb/chroma:0.5.20
+    internal_port: 8000
+    volume: chroma_data
+
+# Embedding + reranker served via HF Text Embeddings Inference (TEI), OpenAI-ish API.
+embeddings:
+  serving:
+    id: tei
+    name: HF Text Embeddings Inference
+    image: ghcr.io/huggingface/text-embeddings-inference:1.6
+    image_cpu: ghcr.io/huggingface/text-embeddings-inference:cpu-1.6
+    internal_port: 80
+  default_model: BAAI/bge-m3
+
+reranker:
+  serving:
+    id: tei-rerank
+    name: TEI (reranker mode)
+    image: ghcr.io/huggingface/text-embeddings-inference:1.6
+    internal_port: 80
+  default_model: BAAI/bge-reranker-v2-m3
+
+document_apps:
+  - id: anythingllm
+    name: AnythingLLM
+    image: mintplexlabs/anythingllm:latest
+    internal_port: 3001
+    volume: anythingllm_data

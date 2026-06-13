@@ -1,0 +1,70 @@
+# Profile: enterprise
+# Everything on: SSO (Authentik), RAG, MCP, monitoring, zero-trust security profile.
+# Heaviest profile; intended for multi-user production.
+
+profile_name: enterprise
+description: Enterprise — SSO + RAG + MCP + Monitoring + Zero-Trust-Security.
+
+runtime:
+  type: docker_compose          # recommendation may upgrade to kubernetes for >8 GPU
+  nvidia_container_toolkit: true
+
+inference:
+  engine: vllm
+  model: null
+  dtype: bfloat16
+  tensor_parallel_size: auto
+  pipeline_parallel_size: auto
+  gpu_memory_utilization: 0.92
+  enable_prefix_caching: true
+  enable_chunked_prefill: true
+  max_model_len: auto
+
+gateway:
+  type: litellm
+  openai_compatible: true
+  rate_limits: true
+  per_user_keys: true
+  router:
+    routing_strategy: latency-based-routing
+    num_retries: 2
+    timeout: 120
+
+web:
+  reverse_proxy: traefik
+  tls: letsencrypt
+  auth: authentik
+  domains: {api: null, webui: null, grafana: null}
+  ui: [open-webui]
+
+rag:
+  enabled: true
+  vector_db: qdrant
+  embeddings_model: BAAI/bge-m3
+  reranker_model: BAAI/bge-reranker-v2-m3
+  document_app: anythingllm
+
+mcp:
+  enabled: true
+  servers:
+    - filesystem-readonly
+    - git-readonly
+    - postgres-readonly
+
+monitoring:
+  enabled: true
+  prometheus: true
+  grafana: true
+  dcgm_exporter: true
+  node_exporter: true
+  cadvisor: true
+
+security:
+  profile: enterprise_zero_trust
+  expose_only_reverse_proxy: true
+  internal_networks: true
+  no_direct_gpu_api_exposure: true
+  audit_logs: true
+  rate_limit_per_minute: 120
+  max_context_tokens: 65536
+  max_output_tokens: 8192

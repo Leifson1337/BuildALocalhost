@@ -8,6 +8,7 @@ engines:
     default: true
     api: openai-compatible
     image: vllm/vllm-openai:v0.6.6
+    image_rocm: rocm/vllm:rocm6.2_vllm_0.6.6      # AMD ROCm build
     default_port: 8000
     gpu: required
     supports:
@@ -30,6 +31,7 @@ engines:
     default: false
     api: openai-compatible
     image: lmsysorg/sglang:latest
+    image_rocm: lmsysorg/sglang:v0.4.0-rocm620
     default_port: 30000
     gpu: required
     supports:
@@ -50,6 +52,7 @@ engines:
     default: false
     api: openai-compatible
     image: ghcr.io/huggingface/text-generation-inference:3.0.1
+    image_rocm: ghcr.io/huggingface/text-generation-inference:3.0.1-rocm
     default_port: 80
     gpu: required
     supports:
@@ -118,4 +121,5 @@ preference_by_class:
   datacenter_high: [vllm, sglang, tgi, nim, ollama, llama_cpp]   # H100/H200/B200/B300
   datacenter_mid:  [vllm, sglang, tgi, ollama, llama_cpp]        # A100/A40
   consumer:        [vllm, ollama, llama_cpp, sglang]             # RTX 4090/3090
+  accelerator:     [vllm, sglang, tgi, llama_cpp]                # AMD MI300X/MI325X (ROCm)
   cpu_only:        [llama_cpp, ollama]

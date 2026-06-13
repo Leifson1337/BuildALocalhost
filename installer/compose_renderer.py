@@ -57,6 +57,14 @@ def render(cfg: ResolvedConfig, output_dir: Path) -> list[Path]:
         (output_dir / "configs" / "traefik").mkdir(parents=True, exist_ok=True)
         written.append(_write(output_dir / "configs" / "traefik" / "dynamic.yml",
                               env.get_template("traefik-dynamic.yml.j2").render(**ctx)))
+    if ctx["mcp"]["enabled"]:
+        (output_dir / "configs" / "mcp").mkdir(parents=True, exist_ok=True)
+        written.append(_write(output_dir / "configs" / "mcp" / "policies.yaml",
+                              env.get_template("mcp-policies.yaml.j2").render(**ctx)))
+    if ctx["auth"]["id"] == "authelia":
+        (output_dir / "configs" / "authelia").mkdir(parents=True, exist_ok=True)
+        written.append(_write(output_dir / "configs" / "authelia" / "configuration.yml",
+                              env.get_template("authelia.yml.j2").render(**ctx)))
     return written
 
 
@@ -69,13 +77,16 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
 
     domains = web.get("domains", {}) or {}
     expose = web.get("expose", {}) or {}
+    sec_prof = catalog.get_security_profile(cfg.security_profile_id) or {}
+    runtime_kind = cfg.runtime_kind
 
     return {
         "profile_name": cfg.profile_name,
         "model": cfg.model,
+        "runtime_kind": runtime_kind,                 # cuda | rocm | cpu
         # engine
         "engine_id": inf["engine"],
-        "engine_image": engine.get("image", "vllm/vllm-openai:latest"),
+        "engine_image": _engine_image(engine, runtime_kind),
         "engine_port": engine.get("default_port", 8000),
         "engine_gpu_required": engine.get("gpu") == "required",
         "engine_command": build_engine_command(cfg, engine),
@@ -90,15 +101,20 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
             "webui": domains.get("webui"),
             "grafana": domains.get("grafana"),
         },
-        "bind": sec.get("bind", "127.0.0.1"),
+        "bind": sec.get("bind", sec_prof.get("bind", "127.0.0.1")),
         "open_webui_port": expose.get("open_webui_port", 3000),
         "litellm_port": expose.get("litellm_port", 4000),
         "ui_open_webui": "open-webui" in (web.get("ui") or []),
         # monitoring
         "monitoring": cfg.monitoring_enabled,
         # security
-        "security_profile": sec.get("profile", "local_only"),
+        "security_profile": cfg.security_profile_id,
         "rate_limit_per_minute": sec.get("rate_limit_per_minute", 60),
+        "docker_socket_proxy": bool(sec_prof.get("docker_socket_proxy", False)),
+        # auth / rag / mcp blocks
+        "auth": _auth_context(cfg),
+        "rag": _rag_context(cfg),
+        "mcp": _mcp_context(cfg),
         # inference params (also used in litellm template + env)
         "tensor_parallel_size": inf.get("tensor_parallel_size", 1),
         "pipeline_parallel_size": inf.get("pipeline_parallel_size", 1),
@@ -107,6 +123,67 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "dtype": inf.get("dtype", "bfloat16"),
         # secrets (rendered into .env only)
         "secrets": cfg.secrets,
+    }
+
+
+def _engine_image(engine: dict, runtime_kind: str) -> str:
+    if runtime_kind == "rocm" and engine.get("image_rocm"):
+        return engine["image_rocm"]
+    return engine.get("image", "vllm/vllm-openai:latest")
+
+
+def _auth_context(cfg: ResolvedConfig) -> dict[str, Any]:
+    prov = catalog.get_auth_provider(cfg.auth_provider_id) or {"id": "none", "service": False}
+    return {
+        "id": prov.get("id", "none"),
+        "service": bool(prov.get("service", False)),
+        "image": prov.get("image"),
+        "port": prov.get("internal_port"),
+        "forward_auth": bool(prov.get("forward_auth", False)),
+        "needs_db": bool(prov.get("needs_db", False)),
+        "needs_redis": bool(prov.get("needs_redis", False)),
+    }
+
+
+def _rag_context(cfg: ResolvedConfig) -> dict[str, Any]:
+    if not cfg.rag_enabled:
+        return {"enabled": False}
+    rag_cat = catalog.load_rag()
+    rd = cfg.data.get("rag", {})
+    vdb_id = rd.get("vector_db", "qdrant")
+    vdb = next((v for v in rag_cat["vector_dbs"] if v["id"] == vdb_id), rag_cat["vector_dbs"][0])
+    tei = rag_cat["embeddings"]["serving"]
+    rer = rag_cat["reranker"]["serving"]
+    runtime_kind = cfg.runtime_kind
+    tei_image = tei.get("image_cpu") if runtime_kind == "cpu" and tei.get("image_cpu") else tei["image"]
+    return {
+        "enabled": True,
+        "vector_db": {"id": vdb["id"], "image": vdb["image"],
+                      "port": vdb.get("internal_port"), "volume": vdb.get("volume")},
+        "embeddings": {"image": tei_image, "port": tei["internal_port"],
+                       "model": rd.get("embeddings_model", rag_cat["embeddings"]["default_model"])},
+        "reranker": {"image": rer["image"], "port": rer["internal_port"],
+                     "model": rd.get("reranker_model", rag_cat["reranker"]["default_model"])},
+        "document_app": rd.get("document_app", "none"),
+        "anythingllm_image": rag_cat["document_apps"][0]["image"],
+        "anythingllm_port": rag_cat["document_apps"][0]["internal_port"],
+    }
+
+
+def _mcp_context(cfg: ResolvedConfig) -> dict[str, Any]:
+    if not cfg.mcp_enabled:
+        return {"enabled": False, "servers": []}
+    mcp_cat = catalog.load_mcp()
+    gw = mcp_cat["gateway"]
+    server_ids = list(cfg.data.get("mcp", {}).get("servers", []) or [])
+    details = [catalog.get_mcp_server(sid) for sid in server_ids]
+    return {
+        "enabled": True,
+        "gateway_image": gw["image"],
+        "gateway_port": gw["internal_port"],
+        "servers": server_ids,
+        "server_details": [d for d in details if d],
+        "default_policy": mcp_cat.get("default_policy", {}),
     }
 
 

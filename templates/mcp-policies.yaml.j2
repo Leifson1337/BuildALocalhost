@@ -1,0 +1,31 @@
+# GENERATED MCP policies — Profile: {{ profile_name }}
+# Deny-by-default. MCP is internal-only and never internet-facing (docs/SECURITY.md).
+default:
+  policy: {{ mcp.default_policy.get("default", "deny") }}
+  max_calls_per_request: {{ mcp.default_policy.get("max_calls_per_request", 5) }}
+  timeout_seconds: {{ mcp.default_policy.get("timeout_seconds", 15) }}
+  audit_log: {{ mcp.default_policy.get("audit_log", true) | lower }}
+  require_user_confirmation_for:
+{% for item in mcp.default_policy.get("require_user_confirmation_for", []) %}
+    - {{ item }}
+{% endfor %}
+
+servers:
+{% for srv in mcp.server_details %}
+  - id: {{ srv.id }}
+    tier: {{ srv.get("tier", "advanced") }}
+    enabled: true
+    network: {{ srv.get("network", "internal_only") }}
+{% if srv.get("package") %}
+    package: "{{ srv.package }}"
+{% endif %}
+{% if srv.get("allowed_tools") %}
+    allowed_tools: {{ srv.allowed_tools }}
+{% endif %}
+{% if srv.get("denied_tools") %}
+    denied_tools: {{ srv.denied_tools }}
+{% endif %}
+{% if srv.get("require_confirmation") %}
+    require_confirmation: {{ srv.require_confirmation }}
+{% endif %}
+{% endfor %}

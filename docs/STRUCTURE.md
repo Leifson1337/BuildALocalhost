@@ -18,20 +18,30 @@ ai-stack/
 │   ├── catalog.py              # Loads YAML catalogs, typed accessors
 │   ├── recommend.py            # Recommendation engine (hardware → engine/parallelism)
 │   ├── profile_builder.py      # Load base profile + merge overrides → ResolvedConfig
-│   ├── validators.py           # Pre-flight checks (VRAM/RAM/ports/Docker/HF token)
+│   ├── validators.py           # Pre-flight + compatibility + license + MCP checks
 │   ├── preview.py              # Rich preview of the planned deployment
+│   ├── wizard.py               # Interactive selection (modes, engine/model/UI/RAG/MCP/auth)
+│   ├── hf_search.py            # Hugging Face live model search (graceful fallback)
 │   └── compose_renderer.py     # Jinja2 render → output/docker-compose.yml + .env + configs
 │
 ├── catalogs/                   # Data-driven catalogs (no hard-coded logic in code)
-│   ├── serving_engines.yaml    # vLLM, SGLang, TGI, NIM, Ollama, llama.cpp
+│   ├── serving_engines.yaml    # vLLM, SGLang, TGI, NIM, Ollama, llama.cpp (+ROCm images)
 │   ├── hardware.yaml           # GPU families (Hopper/Blackwell/Ada/Ampere/AMD)
 │   ├── webuis.yaml             # Open WebUI, AnythingLLM, LibreChat, Dify, Flowise
-│   └── models.curated.yaml     # Curated starter models by category
+│   ├── models.curated.yaml     # Curated starter models by category (diverse families)
+│   ├── auth.yaml               # Auth providers (none/litellm_keys/authelia/authentik/keycloak)
+│   ├── security.yaml           # Security profiles (local_only … enterprise_zero_trust)
+│   ├── rag.yaml                # Vector DBs, embeddings/reranker serving, doc apps
+│   ├── mcp_servers.yaml        # MCP servers by tier + default deny policy
+│   └── compatibility.yaml      # Engine × format × runtime × precision matrix
 │
 ├── profiles/                   # Pre-baked stack profiles
 │   ├── minimal.yaml            # vLLM + LiteLLM + Open WebUI, local only
-│   └── production.yaml         # + Traefik TLS, monitoring, rate limits
-│   # (Stage 2/3: rag.yaml, agents_mcp.yaml, multi_h100.yaml, enterprise.yaml)
+│   ├── production.yaml         # + Traefik TLS, monitoring, rate limits
+│   ├── rag.yaml                # + Qdrant + embeddings/reranker + AnythingLLM
+│   ├── agents_mcp.yaml         # + MCP gateway (safe read-only servers)
+│   ├── multi_h100.yaml         # multi-GPU tuned (auto tensor/pipeline parallel)
+│   └── enterprise.yaml         # SSO (Authentik) + RAG + MCP + zero-trust
 │
 ├── templates/                  # Jinja2 render templates
 │   ├── docker-compose.yml.j2   # Single compose file, services toggled by config

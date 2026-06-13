@@ -44,6 +44,31 @@ def load_models() -> dict[str, Any]:
     return _load_yaml(CATALOGS_DIR / "models.curated.yaml")
 
 
+@functools.lru_cache(maxsize=None)
+def load_auth() -> dict[str, Any]:
+    return _load_yaml(CATALOGS_DIR / "auth.yaml")
+
+
+@functools.lru_cache(maxsize=None)
+def load_security() -> dict[str, Any]:
+    return _load_yaml(CATALOGS_DIR / "security.yaml")
+
+
+@functools.lru_cache(maxsize=None)
+def load_rag() -> dict[str, Any]:
+    return _load_yaml(CATALOGS_DIR / "rag.yaml")
+
+
+@functools.lru_cache(maxsize=None)
+def load_mcp() -> dict[str, Any]:
+    return _load_yaml(CATALOGS_DIR / "mcp_servers.yaml")
+
+
+@functools.lru_cache(maxsize=None)
+def load_compatibility() -> dict[str, Any]:
+    return _load_yaml(CATALOGS_DIR / "compatibility.yaml")
+
+
 def load_profile(name: str) -> dict[str, Any]:
     """Load a base profile by name (without .yaml)."""
     return _load_yaml(PROFILES_DIR / f"{name}.yaml")
@@ -94,3 +119,41 @@ def custom_fallback_gpu() -> dict[str, Any]:
 def interconnect_parallelism_hint(interconnect: str) -> str:
     table = load_hardware().get("interconnect_parallelism", {})
     return table.get(interconnect, "data_parallel_replicas")
+
+
+def get_security_profile(profile_id: str) -> dict[str, Any] | None:
+    for prof in load_security().get("profiles", []):
+        if prof.get("id") == profile_id:
+            return prof
+    return None
+
+
+def get_auth_provider(provider_id: str) -> dict[str, Any] | None:
+    for prov in load_auth().get("providers", []):
+        if prov.get("id") == provider_id:
+            return prov
+    return None
+
+
+def get_mcp_server(server_id: str) -> dict[str, Any] | None:
+    for srv in load_mcp().get("servers", []):
+        if srv.get("id") == server_id:
+            return srv
+    return None
+
+
+def infer_model_kind(model_id: str) -> str:
+    """Infer a coarse format/kind from a model id (see compatibility.yaml kind_hints).
+
+    Returns one of: gguf, awq, gptq, fp8, vision, embedding, safetensors_default.
+    """
+    if not model_id:
+        return "safetensors_default"
+    mid = model_id.lower()
+    hints = load_compatibility().get("kind_hints", {})
+    # Order matters: format/quant hints before generic.
+    for kind in ("gguf", "awq", "gptq", "fp8", "vision", "embedding"):
+        for needle in hints.get(kind, []):
+            if needle.lower() in mid:
+                return kind
+    return "safetensors_default"

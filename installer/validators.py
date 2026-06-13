@@ -26,11 +26,14 @@ class Issue:
 
 def validate(cfg: ResolvedConfig, *, check_ports: bool = True) -> list[Issue]:
     issues: list[Issue] = []
+    issues += _check_compatibility(cfg)
     issues += _check_vram(cfg)
     issues += _check_ram(cfg)
     issues += _check_storage(cfg)
     issues += _check_docker_gpu(cfg)
     issues += _check_hf_token(cfg)
+    issues += _check_license(cfg)
+    issues += _check_mcp(cfg)
     issues += _check_public_exposure(cfg)
     if check_ports:
         issues += _check_ports(cfg)
@@ -42,6 +45,53 @@ def has_fatal(issues: list[Issue]) -> bool:
 
 
 # --------------------------------------------------------------------------- checks
+
+def _check_compatibility(cfg: ResolvedConfig) -> list[Issue]:
+    """Engine × model-format × runtime × precision feasibility (compatibility.yaml)."""
+    issues: list[Issue] = []
+    compat = catalog.load_compatibility()
+    engine_support = compat.get("engine_format_support", {}).get(cfg.engine)
+    if not engine_support:
+        return [Issue("info", "compat.unknown_engine",
+                      f"No compatibility data for engine '{cfg.engine}'.")]
+
+    kind = catalog.infer_model_kind(cfg.model)
+    # 1) format support
+    if kind in (engine_support.get("not") or []):
+        issues.append(Issue("fatal", "compat.format",
+                            f"Engine '{cfg.engine}' does not support '{kind}' models "
+                            f"(model: {cfg.model}). Choose a compatible engine "
+                            f"(e.g. ollama/llama_cpp for GGUF, vLLM for safetensors)."))
+    elif kind not in (engine_support.get("formats") or []) and kind != "embedding":
+        issues.append(Issue("warning", "compat.format_unverified",
+                            f"Model format '{kind}' not listed as supported by '{cfg.engine}'."))
+
+    # 2) runtime (cuda/rocm/cpu)
+    runtime = cfg.runtime_kind
+    supported_runtimes = engine_support.get("runtimes") or ["cuda"]
+    if runtime not in supported_runtimes:
+        sev = "fatal" if runtime == "rocm" else "warning"
+        issues.append(Issue(sev, "compat.runtime",
+                            f"Engine '{cfg.engine}' does not support the '{runtime}' runtime "
+                            f"(supported: {', '.join(supported_runtimes)})."))
+
+    # 3) multi-GPU
+    if cfg.system.total_gpu_count > 1 and not engine_support.get("multi_gpu", False):
+        issues.append(Issue("warning", "compat.multi_gpu",
+                            f"Engine '{cfg.engine}' is single-GPU; extra GPUs will be idle. "
+                            "Consider data-parallel replicas or another engine."))
+
+    # 4) precision vs architecture
+    arch = (cfg.system.primary_gpu.architecture if cfg.system.primary_gpu else None)
+    dtype = cfg.data["inference"].get("dtype")
+    if arch and dtype:
+        allowed = compat.get("precision_by_architecture", {}).get(arch)
+        if allowed and dtype not in allowed:
+            issues.append(Issue("warning", "compat.precision",
+                                f"Precision '{dtype}' may be unsupported on {arch} "
+                                f"(supported: {', '.join(allowed)}). Falling back to bfloat16 advised."))
+    return issues
+
 
 def _model_min_vram(model: str) -> float | None:
     cats = catalog.load_models().get("categories", {})
@@ -131,6 +181,41 @@ def _model_is_gated(model: str) -> bool:
     return False
 
 
+def _check_license(cfg: ResolvedConfig) -> list[Issue]:
+    """Surface gated/license obligations before download (Stage 2).
+
+    We cannot verify license terms offline; we flag gated models and remind the user to
+    confirm commercial-use / public-hosting rights.
+    """
+    if _model_is_gated(cfg.model):
+        return [Issue("info", "license.gated",
+                      f"'{cfg.model}' is gated: accept its license on Hugging Face and ensure "
+                      "your HF token has access. Verify commercial-use / hosting rights.")]
+    return [Issue("info", "license.check",
+                  f"Confirm '{cfg.model}' license permits your use (commercial / public hosting).")]
+
+
+def _check_mcp(cfg: ResolvedConfig) -> list[Issue]:
+    """Validate selected MCP servers against the security profile (deny dangerous on public)."""
+    if not cfg.mcp_enabled:
+        return []
+    issues: list[Issue] = []
+    sec = catalog.get_security_profile(cfg.security_profile_id) or {}
+    allow_dangerous = bool(sec.get("allow_dangerous_mcp", False))
+    for srv_id in cfg.data.get("mcp", {}).get("servers", []) or []:
+        srv = catalog.get_mcp_server(srv_id)
+        if srv is None:
+            issues.append(Issue("warning", "mcp.unknown",
+                                f"Unknown MCP server '{srv_id}' (not in catalog)."))
+            continue
+        if srv.get("tier") == "dangerous_requires_confirmation" and not allow_dangerous:
+            issues.append(Issue("fatal", "mcp.dangerous",
+                                f"Dangerous MCP server '{srv_id}' is not allowed under security "
+                                f"profile '{cfg.security_profile_id}'. Enable it only on local_only "
+                                "or with explicit override."))
+    return issues
+
+
 def _check_public_exposure(cfg: ResolvedConfig) -> list[Issue]:
     issues: list[Issue] = []
     sec = cfg.data.get("security", {})
@@ -141,17 +226,12 @@ def _check_public_exposure(cfg: ResolvedConfig) -> list[Issue]:
         if not domains.get("api"):
             issues.append(Issue("warning", "tls.no_domain",
                                 "public_secure selected but no API domain set; TLS/ACME needs a domain."))
-    if sec.get("docker_socket_warning"):
+    # Docker socket: only a residual risk if we are NOT using the socket proxy.
+    sec_prof = catalog.get_security_profile(cfg.security_profile_id) or {}
+    if cfg.uses_traefik and not sec_prof.get("docker_socket_proxy", False):
         issues.append(Issue("warning", "docker.socket",
-                            "Traefik mounts the Docker socket (read-only). This is a privilege risk; "
-                            "Stage 2 replaces it with a docker-socket-proxy."))
-    # MCP dangerous tools under public profile (Stage 2 wiring; guard now).
-    mcp = cfg.data.get("mcp", {})
-    if mcp.get("enabled") and profile == "public_secure":
-        for srv in mcp.get("servers", []):
-            if any(k in str(srv) for k in ("shell-full", "docker-control", "write")):
-                issues.append(Issue("fatal", "mcp.dangerous_public",
-                                    f"Dangerous MCP server '{srv}' enabled under public profile."))
+                            "Traefik mounts the Docker socket (read-only). Privilege risk; "
+                            "use a security profile with docker_socket_proxy enabled."))
     return issues
 
 

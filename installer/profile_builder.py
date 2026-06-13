@@ -42,6 +42,26 @@ class ResolvedConfig:
     def uses_traefik(self) -> bool:
         return self.data.get("web", {}).get("reverse_proxy") == "traefik"
 
+    @property
+    def runtime_kind(self) -> str:
+        return self.data.get("runtime", {}).get("kind", self.system.runtime_kind)
+
+    @property
+    def security_profile_id(self) -> str:
+        return self.data.get("security", {}).get("profile", "local_only")
+
+    @property
+    def auth_provider_id(self) -> str:
+        return self.data.get("web", {}).get("auth", "none")
+
+    @property
+    def rag_enabled(self) -> bool:
+        return bool(self.data.get("rag", {}).get("enabled", False))
+
+    @property
+    def mcp_enabled(self) -> bool:
+        return bool(self.data.get("mcp", {}).get("enabled", False))
+
 
 def build(
     *,
@@ -73,8 +93,9 @@ def build(
     if inf.get("max_model_len") in (None, "auto"):
         inf["max_model_len"] = _default_max_len(resolved_model)
 
-    # 3) runtime hint
+    # 3) runtime hint + GPU runtime family (cuda/rocm/cpu)
     data.setdefault("runtime", {}).setdefault("type", recommendation.runtime)
+    data["runtime"]["kind"] = system.runtime_kind
 
     # 4) apply user overrides (dotted-path dict merge)
     if overrides:
@@ -86,6 +107,12 @@ def build(
         "LITELLM_MASTER_KEY": "sk-" + _token(),
         "GRAFANA_ADMIN_PASSWORD": _token(),
         "WEBUI_SECRET_KEY": _token(),
+        # Auth provider secrets (rendered into .env only when that provider is selected).
+        "AUTHELIA_JWT_SECRET": _token(),
+        "AUTHELIA_SESSION_SECRET": _token(),
+        "AUTHELIA_STORAGE_ENCRYPTION_KEY": _token(32),
+        "AUTHENTIK_SECRET_KEY": _token(32),
+        "KEYCLOAK_ADMIN_PASSWORD": _token(),
     }
 
     return ResolvedConfig(

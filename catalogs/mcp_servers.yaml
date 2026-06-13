@@ -1,0 +1,89 @@
+# MCP server catalog (Stage 2). MCP is NEVER internet-facing; it sits behind the gateway
+# on the internal network. Deny-by-default. See docs/SECURITY.md.
+#
+# tier: safe_default | advanced | dangerous_requires_confirmation
+# Servers are exposed to the LLM via an mcpo/mcp-proxy gateway as OpenAPI tools.
+
+gateway:
+  id: mcpo
+  name: MCP-to-OpenAPI gateway (mcpo)
+  image: ghcr.io/open-webui/mcpo:main
+  internal_port: 8000
+  default_policy: deny_by_default
+
+servers:
+  # ---- safe defaults (read-only, low blast radius) ----
+  - id: filesystem-readonly
+    tier: safe_default
+    package: "@modelcontextprotocol/server-filesystem"
+    allowed_tools: [read_file, list_directory]
+    denied_tools: [write_file, delete_file, move_file]
+    network: internal_only
+
+  - id: git-readonly
+    tier: safe_default
+    package: "mcp-server-git"
+    allowed_tools: [git_log, git_show, git_status, git_diff]
+    denied_tools: [git_commit, git_push, git_reset]
+    network: internal_only
+
+  - id: postgres-readonly
+    tier: safe_default
+    package: "@modelcontextprotocol/server-postgres"
+    allowed_tools: [query]
+    denied_tools: [execute]
+    network: internal_only
+    notes: Connect with a read-only DB role.
+
+  - id: web-search-proxy
+    tier: safe_default
+    package: "mcp-server-websearch"
+    allowed_tools: [search]
+    network: internal_only
+    require_confirmation: [external_http]
+
+  # ---- advanced (scoped writes / more reach) ----
+  - id: filesystem-write-scoped
+    tier: advanced
+    package: "@modelcontextprotocol/server-filesystem"
+    allowed_tools: [read_file, list_directory, write_file]
+    require_confirmation: [write]
+    network: internal_only
+
+  - id: browser-sandbox
+    tier: advanced
+    package: "mcp-server-playwright"
+    network: internal_only
+    require_confirmation: [external_http]
+    notes: Run in a sandboxed, network-restricted container.
+
+  - id: github
+    tier: advanced
+    package: "@modelcontextprotocol/server-github"
+    require_confirmation: [write, external_http]
+    network: internal_only
+
+  # ---- dangerous (off by default; blocked under public profiles) ----
+  - id: shell-full
+    tier: dangerous_requires_confirmation
+    require_confirmation: [shell]
+    network: internal_only
+    notes: Full shell. Never enable on public_secure / enterprise.
+
+  - id: docker-control
+    tier: dangerous_requires_confirmation
+    require_confirmation: [shell, docker]
+    network: internal_only
+
+  - id: database-write
+    tier: dangerous_requires_confirmation
+    require_confirmation: [db_write]
+    network: internal_only
+
+# Default policy template written to configs/mcp/policies.yaml at render time.
+default_policy:
+  default: deny
+  max_calls_per_request: 5
+  timeout_seconds: 15
+  audit_log: true
+  require_user_confirmation_for: [external_http, write, delete, shell, email, db_write]

@@ -28,17 +28,21 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Health-Check-Skripte + Makefile
 - [ ] End-to-End-Test auf echtem GPU-Host (durch Nutzer; hier nur Simulation testbar)
 
-## Stufe 2 — Auswahlbasierter Installer ⚪
+## Stufe 2 — Auswahlbasierter Installer 🟡
 
-- [ ] Voll interaktiver TUI-Wizard (alle Modi: Auto / Manuell / Profil / Expert / Simulation)
-- [ ] Live-Hugging-Face-Modellsuche + Kategorie-Filter
-- [ ] Modell-Kompatibilitätsmatrix (Engine × Modell × Quantisierung × VRAM)
-- [ ] Lizenz-/Gated-Prüfung vor Download
-- [ ] RAG-Stack (Qdrant + Embeddings + Reranker, AnythingLLM)
-- [ ] MCP-Gateway-Layer + Policies (deny-by-default, Audit, Confirmation)
-- [ ] Security-Profile (local_only / private_lan / public_secure / enterprise_zero_trust)
-- [ ] Docker-Socket-Proxy statt direktem Socket-Mount
-- [ ] SSO/Auth (Authentik/Keycloak) optional
+- [x] Voll interaktiver TUI-Wizard (alle Modi: Auto / Manuell / Profil / Expert / Simulation)
+- [x] Live-Hugging-Face-Modellsuche + Kategorie-Filter (graceful Fallback offline)
+- [x] Modell-Kompatibilitätsmatrix (Engine × Format × Runtime × Präzision)
+- [x] Lizenz-/Gated-Prüfung vor Download
+- [x] RAG-Stack (Qdrant/Weaviate/Milvus/pgvector/Chroma + TEI-Embeddings + Reranker, AnythingLLM)
+- [x] MCP-Gateway-Layer + Policies (deny-by-default, Audit, Confirmation, Tier-Gating)
+- [x] Security-Profile (local_only / private_lan / public_secure / enterprise_zero_trust)
+- [x] Docker-Socket-Proxy statt direktem Socket-Mount
+- [x] Auth auswählbar: LiteLLM-Keys / Authelia / Authentik / Keycloak
+- [x] AMD ROCm: Runtime-Erkennung + ROCm-Engine-Images + GPU-Zugriff (/dev/kfd)
+- [x] Neue Profile: rag, agents_mcp, multi_h100, enterprise
+- [ ] End-to-End-Test auf echter Hardware (durch Nutzer; hier nur Simulation)
+- [ ] Authentik/Keycloak Realm-/Flow-Bootstrap-Automatisierung (aktuell manuell)
 
 ## Stufe 3 — Produktionsplattform ⚪
 

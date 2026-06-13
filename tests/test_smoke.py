@@ -88,6 +88,72 @@ def test_vram_insufficient_is_fatal():
     assert any(i.code == "vram.insufficient" for i in issues)
 
 
+def test_all_profiles_render_cuda_and_rocm():
+    import yaml
+    from installer import catalog
+    for profile in catalog.available_profiles():
+        for sim in ("8xH100", "8xMI300X"):
+            system = build_simulation(sim)
+            rec = recommend(system, "high_throughput_chat")
+            cfg = profile_builder.build(profile_name=profile, system=system,
+                                        recommendation=rec, goal="high_throughput_chat")
+            with tempfile.TemporaryDirectory() as tmp:
+                out = Path(tmp) / "o"
+                compose_renderer.render(cfg, out)
+                doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+                assert "services" in doc and doc["services"], f"{profile}/{sim} empty"
+
+
+def test_amd_runtime_and_image():
+    system = build_simulation("8xMI300X")
+    assert system.runtime_kind == "rocm"
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    ctx = compose_renderer.build_context(cfg)
+    assert "rocm" in ctx["engine_image"].lower()
+    # No DCGM exporter on ROCm.
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        text = (out / "docker-compose.yml").read_text(encoding="utf-8")
+        assert "dcgm-exporter" not in text
+        assert "/dev/kfd" in text
+
+
+def test_gguf_on_vllm_is_fatal():
+    system = build_simulation("1xRTX4090")
+    rec = recommend(system, "development")
+    cfg = profile_builder.build(profile_name="minimal", system=system, recommendation=rec,
+                                model="bartowski/Qwen2.5-7B-Instruct-GGUF", goal="development")
+    issues = validators.validate(cfg, check_ports=False)
+    assert any(i.code == "compat.format" and i.severity == "fatal" for i in issues)
+
+
+def test_dangerous_mcp_fatal_on_public():
+    system = build_simulation("8xH100")
+    rec = recommend(system, "agents_mcp")
+    cfg = profile_builder.build(
+        profile_name="agents_mcp", system=system, recommendation=rec, goal="agents_mcp",
+        overrides={"mcp": {"enabled": True, "servers": ["shell-full"]}},
+    )
+    issues = validators.validate(cfg, check_ports=False)
+    assert any(i.code == "mcp.dangerous" and i.severity == "fatal" for i in issues)
+
+
+def test_socket_proxy_replaces_raw_socket():
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        text = (out / "docker-compose.yml").read_text(encoding="utf-8")
+        # public_secure profile enables docker_socket_proxy.
+        assert "docker-socket-proxy" in text
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

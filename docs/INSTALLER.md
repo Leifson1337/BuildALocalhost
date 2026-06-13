@@ -28,15 +28,20 @@ python -m installer [OPTIONS]
 Goals: `high_throughput_chat`, `low_latency`, `many_users`, `highest_quality`,
 `rag`, `agents_mcp`, `development`.
 
-## Modes (Stage 1 implemented: auto + simulation; manual/expert in Stage 2)
+## Modes (all implemented in Stage 2)
 
 | Mode         | How                          | Use case                              |
 |--------------|------------------------------|---------------------------------------|
 | Auto         | detect real hardware (NVML)  | run on the actual GPU host            |
 | Simulation   | `--simulate "8xH100"`        | preview a setup without that hardware |
-| Manual       | (Stage 2) enter GPUs/RAM/…   | hardware not auto-detectable          |
+| Manual       | wizard prompts GPUs/RAM/…    | hardware not auto-detectable          |
 | Profile      | `--profile production`       | start from a known-good profile       |
-| Expert       | (Stage 2) pick every layer   | CUDA/Triton/TensorRT/NCCL/quant       |
+| Expert       | wizard: pick every layer     | engine/model/UI/RAG/MCP/auth/precision|
+
+In interactive mode the wizard first asks the **mode**, then goal, profile, and the stack
+selections. Manual mode prompts vendor/model/count/VRAM/interconnect/RAM/storage. Expert mode
+additionally exposes RAG, MCP server selection (deny-by-default, dangerous tiers hidden unless
+the security profile allows them), and precision.
 
 ## Wizard flow
 

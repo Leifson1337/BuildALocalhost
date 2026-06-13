@@ -1,0 +1,61 @@
+# Profile: agents_mcp
+# production + MCP gateway with safe-default read-only servers (deny-by-default policy).
+
+profile_name: agents_mcp
+description: Agenten/MCP — production + abgesicherter MCP-Gateway (read-only Defaults).
+
+runtime:
+  type: docker_compose
+  nvidia_container_toolkit: true
+
+inference:
+  engine: vllm
+  model: null
+  dtype: bfloat16
+  tensor_parallel_size: auto
+  pipeline_parallel_size: 1
+  gpu_memory_utilization: 0.90
+  enable_prefix_caching: true
+  max_model_len: auto
+
+gateway:
+  type: litellm
+  openai_compatible: true
+  rate_limits: true
+  per_user_keys: true
+
+web:
+  reverse_proxy: traefik
+  tls: letsencrypt
+  auth: litellm_keys
+  domains: {api: null, webui: null, grafana: null}
+  ui: [open-webui]
+
+rag:
+  enabled: false
+
+mcp:
+  enabled: true
+  servers:
+    - filesystem-readonly
+    - git-readonly
+    - postgres-readonly
+    - web-search-proxy
+
+monitoring:
+  enabled: true
+  prometheus: true
+  grafana: true
+  dcgm_exporter: true
+  node_exporter: true
+  cadvisor: true
+
+security:
+  profile: public_secure
+  expose_only_reverse_proxy: true
+  internal_networks: true
+  no_direct_gpu_api_exposure: true
+  audit_logs: true
+  rate_limit_per_minute: 60
+  max_context_tokens: 32768
+  max_output_tokens: 4096

@@ -38,33 +38,55 @@ def main(
     if ctx.invoked_subcommand is not None:
         return  # a subcommand (e.g. `list-profiles`) was requested
 
-    console.print("[bold]Universal AI Stack Builder[/bold] — Stufe 1\n")
+    console.print("[bold]Universal AI Stack Builder[/bold] — Stufe 2\n")
 
-    # 1) Hardware: simulate or auto-detect
+    from installer import wizard
+    from installer.hardware import build_simulation
+
+    interactive = not non_interactive
+    overrides: dict = {}
+
+    # 1) Mode + hardware
     if simulate:
-        from installer.hardware import build_simulation
         system = build_simulation(simulate)
         console.print(f"[cyan]Simulationsmodus:[/cyan] {simulate}")
-    else:
-        console.print("[cyan]Erkenne Hardware…[/cyan]")
+        mode = "simulation"
+    elif not interactive:
         system = detect_gpus.detect_system()
-        if not system.has_gpu and not non_interactive:
-            console.print(
-                "[yellow]Keine GPU erkannt.[/yellow] Du kannst mit "
-                '[bold]--simulate "8xH100"[/bold] eine Konfiguration als Vorschau erzeugen.'
-            )
+        mode = "auto"
+    else:
+        mode = wizard.select_mode("auto")
+        if mode == "simulation":
+            system = build_simulation(wizard.ask_simulation_spec())
+        elif mode == "manual":
+            system = wizard.ask_manual_hardware()
+        else:  # auto / profile / expert all probe real hardware
+            console.print("[cyan]Erkenne Hardware…[/cyan]")
+            system = detect_gpus.detect_system()
+            if not system.has_gpu:
+                console.print("[yellow]Keine GPU erkannt.[/yellow] Wechsle in Simulation.")
+                system = build_simulation(wizard.ask_simulation_spec())
 
-    # 2) Profile + goal selection (interactive unless suppressed)
-    if not non_interactive and not simulate:
-        profile = _select_profile(profile)
-        goal = _select_goal(goal)
+    # 2) Goal + profile
+    if interactive and not simulate:
+        goal = wizard.select_goal(goal)
+        profile = wizard.select_profile(profile)
 
     # 3) Recommendation
     rec = recommend(system, goal)
 
-    # 4) Resolve config
+    # 4) Stack selections (engine/model/UI/security/auth [+ RAG/MCP in expert])
+    if interactive and not simulate:
+        sel_model, overrides = wizard.build_overrides(
+            profile_name=profile, recommendation=rec, expert=(mode == "expert")
+        )
+        if sel_model:
+            model = sel_model
+
+    # 5) Resolve config
     cfg = profile_builder.build(
-        profile_name=profile, system=system, recommendation=rec, model=model, goal=goal
+        profile_name=profile, system=system, recommendation=rec,
+        model=model, goal=goal, overrides=overrides,
     )
 
     # 5) Validate (ports skipped on dry-run / simulation)
@@ -118,35 +140,6 @@ def list_engines() -> None:
 
 
 # --------------------------------------------------------------------------- interactive helpers
-
-def _select_profile(default: str) -> str:
-    try:
-        import questionary
-    except Exception:
-        return default
-    choices = catalog.available_profiles()
-    answer = questionary.select(
-        "Welches Profil möchtest du installieren?",
-        choices=choices,
-        default=default if default in choices else choices[0],
-    ).ask()
-    return answer or default
-
-
-def _select_goal(default: str) -> str:
-    try:
-        import questionary
-    except Exception:
-        return default
-    from installer.recommend import GOALS
-    choices = sorted(GOALS)
-    answer = questionary.select(
-        "Was ist das Hauptziel?",
-        choices=choices,
-        default=default if default in choices else "high_throughput_chat",
-    ).ask()
-    return answer or default
-
 
 def _confirm(message: str, default: bool = True) -> bool:
     try:

@@ -1,0 +1,62 @@
+# Security profile catalog. Selected in the wizard; drives network exposure, TLS,
+# auth recommendations, and which MCP tools are permitted.
+
+profiles:
+  - id: local_only
+    name: Local only (Entwicklung)
+    bind: 127.0.0.1
+    reverse_proxy: none
+    tls: false
+    expose_only_reverse_proxy: false
+    allow_dangerous_mcp: false
+    rate_limits: false
+    audit_logs: false
+    docker_socket_proxy: false
+    description: An localhost gebunden, kein TLS, ein Nutzer. Nur Entwicklung.
+
+  - id: private_lan
+    name: Private LAN
+    bind: 0.0.0.0
+    reverse_proxy: traefik
+    tls: false                 # self-signed / none; LAN only
+    expose_only_reverse_proxy: true
+    allow_dangerous_mcp: false
+    rate_limits: true
+    audit_logs: true
+    docker_socket_proxy: true
+    description: Im LAN erreichbar, Basis-Auth, keine öffentliche Exposition.
+
+  - id: public_secure
+    name: Public secure (Internet)
+    bind: 0.0.0.0
+    reverse_proxy: traefik
+    tls: letsencrypt
+    expose_only_reverse_proxy: true
+    allow_dangerous_mcp: false
+    rate_limits: true
+    audit_logs: true
+    docker_socket_proxy: true
+    require_auth: true
+    description: TLS + Auth + Rate Limits + Monitoring. Default fürs Internet.
+
+  - id: enterprise_zero_trust
+    name: Enterprise zero-trust
+    bind: 0.0.0.0
+    reverse_proxy: traefik
+    tls: letsencrypt
+    expose_only_reverse_proxy: true
+    allow_dangerous_mcp: false
+    rate_limits: true
+    audit_logs: true
+    docker_socket_proxy: true
+    require_auth: true
+    require_sso: true
+    internal_mtls: true        # Stage 3 fully; flagged here
+    image_scanning: true       # advisory
+    description: SSO + RBAC + mTLS (intern) + Secrets-Mgmt + SIEM-Export.
+
+# Global guardrails applied regardless of profile.
+guardrails:
+  no_direct_gpu_api_exposure: true
+  internal_networks: true
+  secrets_never_in_logs: true

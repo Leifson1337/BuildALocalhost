@@ -24,16 +24,47 @@ volumes:
   grafana_data: {}
   prometheus_data: {}
 {% endif %}
+{% if rag.enabled %}
+  hf_cache_embed: {}
+{% if rag.vector_db.volume %}
+  {{ rag.vector_db.volume }}: {}
+{% endif %}
+{% if rag.document_app == "anythingllm" %}
+  anythingllm_data: {}
+{% endif %}
+{% endif %}
+{% if auth.id == "authentik" %}
+  authentik_media: {}
+{% endif %}
 
 services:
 
 {% if uses_traefik %}
+{% if docker_socket_proxy %}
+  # SECURITY (ADR-0009): Traefik reaches Docker only via a read-only socket proxy.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      CONTAINERS: "1"
+      SERVICES: "1"
+      TASKS: "1"
+      NETWORKS: "1"
+      POST: "0"          # deny all write/POST operations
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks: [internal]
+    restart: unless-stopped
+
+{% endif %}
   traefik:
     image: traefik:v3.2
     command:
       - "--api.dashboard=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+{% if docker_socket_proxy %}
+      - "--providers.docker.endpoint=tcp://docker-socket-proxy:2375"
+{% endif %}
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
@@ -49,10 +80,15 @@ services:
       - "443:443"
     networks: [public, internal]
     volumes:
-      # SECURITY (ADR-0009): read-only socket mount; replaced by docker-socket-proxy in Stage 2.
+{% if not docker_socket_proxy %}
+      # Residual risk: direct read-only socket mount (no proxy in this security profile).
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+{% endif %}
       - "./configs/traefik:/etc/traefik/dynamic:ro"
       - "./data/letsencrypt:/letsencrypt"
+{% if docker_socket_proxy %}
+    depends_on: [docker-socket-proxy]
+{% endif %}
     restart: unless-stopped
 {% endif %}
 
@@ -98,7 +134,7 @@ services:
       - hf_cache:/hf-cache
       - model_cache:/models
     networks: [internal]
-{% if engine_gpu_required %}
+{% if engine_gpu_required and runtime_kind == "cuda" %}
     deploy:
       resources:
         reservations:
@@ -106,6 +142,14 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+{% elif engine_gpu_required and runtime_kind == "rocm" %}
+    # AMD ROCm GPU access
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add: [video]
+    security_opt: [seccomp=unconfined]
+    cap_add: [SYS_PTRACE]
 {% endif %}
     restart: unless-stopped
 
@@ -198,7 +242,8 @@ services:
 {% endif %}
     restart: unless-stopped
 
-  dcgm-exporter:
+{% if runtime_kind == "cuda" %}
+  dcgm-exporter:               # NVIDIA GPU metrics (CUDA only)
     image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
     cap_add: [SYS_ADMIN]
     networks: [monitoring]
@@ -210,6 +255,7 @@ services:
               count: all
               capabilities: [gpu]
     restart: unless-stopped
+{% endif %}
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
@@ -228,5 +274,198 @@ services:
       - "/var/run:/var/run:ro"
       - "/sys:/sys:ro"
       - "/var/lib/docker/:/var/lib/docker:ro"
+    restart: unless-stopped
+{% endif %}
+
+{% if rag.enabled %}
+  # --- RAG stack ------------------------------------------------------------
+  vectordb:
+    image: {{ rag.vector_db.image }}
+{% if rag.vector_db.volume %}
+    volumes:
+      - {{ rag.vector_db.volume }}:/qdrant/storage
+{% endif %}
+    networks: [internal]
+    restart: unless-stopped
+
+  embeddings:
+    image: {{ rag.embeddings.image }}
+    command: ["--model-id", "${EMBEDDINGS_MODEL}", "--port", "{{ rag.embeddings.port }}"]
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - hf_cache_embed:/data
+    networks: [internal]
+{% if runtime_kind == "cuda" %}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+{% elif runtime_kind == "rocm" %}
+    devices: ["/dev/kfd", "/dev/dri"]
+    group_add: [video]
+{% endif %}
+    restart: unless-stopped
+
+  reranker:
+    image: {{ rag.reranker.image }}
+    command: ["--model-id", "${RERANKER_MODEL}", "--port", "{{ rag.reranker.port }}"]
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    networks: [internal]
+{% if runtime_kind == "cuda" %}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+{% endif %}
+    restart: unless-stopped
+
+{% if rag.document_app == "anythingllm" %}
+  anythingllm:
+    image: {{ rag.anythingllm_image }}
+    environment:
+      LLM_PROVIDER: generic-openai
+      GENERIC_OPEN_AI_BASE_PATH: http://litellm:4000/v1
+      GENERIC_OPEN_AI_API_KEY: ${LITELLM_MASTER_KEY}
+      GENERIC_OPEN_AI_MODEL_PREF: main-chat
+      EMBEDDING_ENGINE: generic-openai
+      EMBEDDING_BASE_PATH: http://embeddings:{{ rag.embeddings.port }}
+      VECTOR_DB: {{ rag.vector_db.id }}
+    volumes:
+      - anythingllm_data:/app/server/storage
+    depends_on: [litellm, vectordb, embeddings]
+    networks: [internal]
+{% if uses_traefik %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.anythingllm.rule=Host(`anythingllm.${API_DOMAIN}`)"
+      - "traefik.http.routers.anythingllm.entrypoints=websecure"
+{% if tls %}
+      - "traefik.http.routers.anythingllm.tls.certresolver=le"
+{% endif %}
+      - "traefik.http.services.anythingllm.loadbalancer.server.port={{ rag.anythingllm_port }}"
+{% endif %}
+    restart: unless-stopped
+{% endif %}
+{% endif %}
+
+{% if mcp.enabled %}
+  # --- MCP gateway (deny-by-default; internal only; NEVER public) -----------
+  mcp-gateway:
+    image: {{ mcp.gateway_image }}
+    command: ["--config", "/config/policies.yaml", "--port", "{{ mcp.gateway_port }}"]
+    volumes:
+      - ./configs/mcp/policies.yaml:/config/policies.yaml:ro
+    networks: [internal]
+    restart: unless-stopped
+{% endif %}
+
+{% if auth.service and auth.id == "authelia" %}
+  # --- Auth: Authelia (forward-auth via Traefik) ----------------------------
+  authelia:
+    image: {{ auth.image }}
+    volumes:
+      - ./configs/authelia/configuration.yml:/config/configuration.yml:ro
+    environment:
+      AUTHELIA_JWT_SECRET: ${AUTHELIA_JWT_SECRET}
+      AUTHELIA_SESSION_SECRET: ${AUTHELIA_SESSION_SECRET}
+      AUTHELIA_STORAGE_ENCRYPTION_KEY: ${AUTHELIA_STORAGE_ENCRYPTION_KEY}
+    depends_on: [redis]
+    networks: [internal]
+{% if uses_traefik %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`auth.${API_DOMAIN}`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+{% if tls %}
+      - "traefik.http.routers.authelia.tls.certresolver=le"
+{% endif %}
+      - "traefik.http.services.authelia.loadbalancer.server.port={{ auth.port }}"
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:{{ auth.port }}/api/verify?rd=https://auth.${API_DOMAIN}"
+      - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Email"
+{% endif %}
+    restart: unless-stopped
+{% endif %}
+
+{% if auth.service and auth.id == "authentik" %}
+  # --- Auth: Authentik (full IdP; server + worker) --------------------------
+  authentik-server:
+    image: {{ auth.image }}
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: ai_stack
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD}
+      AUTHENTIK_POSTGRESQL__NAME: ai_stack
+      AUTHENTIK_REDIS__HOST: redis
+    volumes:
+      - authentik_media:/media
+    depends_on: [postgres, redis]
+    networks: [internal]
+{% if uses_traefik %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.rule=Host(`auth.${API_DOMAIN}`)"
+      - "traefik.http.routers.authentik.entrypoints=websecure"
+{% if tls %}
+      - "traefik.http.routers.authentik.tls.certresolver=le"
+{% endif %}
+      - "traefik.http.services.authentik.loadbalancer.server.port={{ auth.port }}"
+{% endif %}
+    restart: unless-stopped
+
+  authentik-worker:
+    image: {{ auth.image }}
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: ai_stack
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD}
+      AUTHENTIK_POSTGRESQL__NAME: ai_stack
+      AUTHENTIK_REDIS__HOST: redis
+    volumes:
+      - authentik_media:/media
+    depends_on: [postgres, redis]
+    networks: [internal]
+    restart: unless-stopped
+{% endif %}
+
+{% if auth.service and auth.id == "keycloak" %}
+  # --- Auth: Keycloak (IdP; uses shared Postgres) ---------------------------
+  keycloak:
+    image: {{ auth.image }}
+    command: start
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/ai_stack
+      KC_DB_USERNAME: ai_stack
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HOSTNAME: auth.${API_DOMAIN}
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    depends_on: [postgres]
+    networks: [internal]
+{% if uses_traefik %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`auth.${API_DOMAIN}`)"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
+{% if tls %}
+      - "traefik.http.routers.keycloak.tls.certresolver=le"
+{% endif %}
+      - "traefik.http.services.keycloak.loadbalancer.server.port={{ auth.port }}"
+{% endif %}
     restart: unless-stopped
 {% endif %}

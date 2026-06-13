@@ -1,0 +1,55 @@
+# Model/engine compatibility matrix (Stage 2).
+# Used by validators to reject incompatible engine × model × quantization × runtime combos.
+#
+# Matching is by model "kind" inferred from the HF id / format, not per-model rows
+# (that would rot). kind ∈ {gguf, awq, gptq, fp8, safetensors_default, vision, embedding}.
+
+engine_format_support:
+  vllm:
+    formats: [safetensors_default, awq, gptq, fp8, vision]
+    not: [gguf]
+    runtimes: [cuda, rocm]            # vLLM has a ROCm build
+    multi_gpu: true
+  sglang:
+    formats: [safetensors_default, awq, gptq, fp8, vision]
+    not: [gguf]
+    runtimes: [cuda, rocm]
+    multi_gpu: true
+  tgi:
+    formats: [safetensors_default, awq, gptq, fp8, vision]
+    not: [gguf]
+    runtimes: [cuda, rocm]
+    multi_gpu: true
+  nim:
+    formats: [safetensors_default, fp8, fp4]
+    runtimes: [cuda]
+    multi_gpu: true
+    notes: Per-model NIM images; not arbitrary HF ids.
+  ollama:
+    formats: [gguf]
+    not: [safetensors_default, awq, gptq, fp8]
+    runtimes: [cuda, rocm, cpu]
+    multi_gpu: false
+  llama_cpp:
+    formats: [gguf]
+    not: [safetensors_default, awq, gptq, fp8]
+    runtimes: [cuda, rocm, cpu]
+    multi_gpu: false
+
+# Heuristics to infer a model "kind" from its id (substring, case-insensitive).
+kind_hints:
+  gguf: ["gguf", "-q4", "-q5", "-q8", "q4_k", "q5_k", "q8_0"]
+  awq:  ["awq"]
+  gptq: ["gptq"]
+  fp8:  ["fp8"]
+  vision: ["-vl", "-vision", "llava", "internvl", "qwen2-vl", "qwen2.5-vl"]
+  embedding: ["bge", "e5", "embed", "gte", "arctic-embed", "nomic-embed"]
+# Anything not matched is treated as safetensors_default (bf16/fp16 weights).
+
+# Precision support by GPU architecture (gate fp8/fp4 selection).
+precision_by_architecture:
+  hopper:    [bfloat16, fp16, fp8]
+  blackwell: [bfloat16, fp16, fp8, fp4, nvfp4]
+  ada:       [bfloat16, fp16, fp8]
+  ampere:    [bfloat16, fp16]
+  cdna:      [bfloat16, fp16, fp8]      # AMD MI300X/MI325X

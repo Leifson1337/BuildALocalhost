@@ -82,6 +82,7 @@ def _stack(cfg: ResolvedConfig) -> None:
     t.add_column("Komponente")
     t.add_column("Auswahl")
     t.add_row("Profil", cfg.profile_name)
+    t.add_row("Runtime", cfg.runtime_kind)
     t.add_row("Engine", inf["engine"])
     t.add_row("Modell", cfg.model)
     t.add_row("dtype", str(inf.get("dtype")))
@@ -89,9 +90,16 @@ def _stack(cfg: ResolvedConfig) -> None:
     t.add_row("GPU mem util", str(inf.get("gpu_memory_utilization")))
     t.add_row("Gateway", cfg.data.get("gateway", {}).get("type", "—"))
     t.add_row("Web-UI", ", ".join(cfg.data.get("web", {}).get("ui", []) or ["—"]))
+    t.add_row("Auth", cfg.auth_provider_id)
+    if cfg.rag_enabled:
+        rd = cfg.data.get("rag", {})
+        t.add_row("RAG", f"{rd.get('vector_db')} + {rd.get('embeddings_model')} "
+                         f"+ reranker ({rd.get('document_app')})")
+    if cfg.mcp_enabled:
+        t.add_row("MCP", ", ".join(cfg.data.get("mcp", {}).get("servers", []) or ["—"]))
     t.add_row("Monitoring", "ja" if cfg.monitoring_enabled else "nein")
     t.add_row("Reverse Proxy", cfg.data.get("web", {}).get("reverse_proxy", "—"))
-    t.add_row("Security-Profil", cfg.data.get("security", {}).get("profile", "—"))
+    t.add_row("Security-Profil", cfg.security_profile_id)
     console.print(t)
 
 
