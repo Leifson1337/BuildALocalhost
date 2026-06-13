@@ -230,6 +230,22 @@ groups) is a follow-up; gateway-level enforcement is covered now.
 
 ---
 
+## ADR-0018 — Supply-chain: inventory in code, scanning via external tools
+
+**Context:** Mutable image tags (`:latest`, `:main`) cause silent drift; production wants
+vulnerability scanning + SBOMs.
+
+**Decision:** `installer/supply_chain.py` is the pure inventory/classification layer (digest /
+version / mutable) over a rendered compose file; `audit-images` reports it and a validator
+warns on mutable engine tags (fatal under `enterprise_zero_trust`). Scanning and SBOMs are
+delegated to best-in-class external tools via scripts: `scan-images.sh` (Trivy→Grype fallback)
+and `generate-sbom.sh` (Syft, CycloneDX), which degrade gracefully when the tool is absent.
+
+**Consequences:** No reinvented scanner; honest about requiring Trivy/Grype/Syft. cosign
+signature verification + automatic digest-pinning are tracked follow-ups.
+
+---
+
 ## Open decisions (to be asked, not assumed)
 
 Tracked in `ROADMAP.md` → "Offene Fragen". Will be raised when the relevant stage is reached:

@@ -36,6 +36,7 @@ def validate(cfg: ResolvedConfig, *, check_ports: bool = True) -> list[Issue]:
     issues += _check_license(cfg)
     issues += _check_mcp(cfg)
     issues += _check_policy(cfg)
+    issues += _check_supply_chain(cfg)
     issues += _check_public_exposure(cfg)
     if check_ports:
         issues += _check_ports(cfg)
@@ -239,6 +240,22 @@ def _check_mcp(cfg: ResolvedConfig) -> list[Issue]:
                                 f"profile '{cfg.security_profile_id}'. Enable it only on local_only "
                                 "or with explicit override."))
     return issues
+
+
+def _check_supply_chain(cfg: ResolvedConfig) -> list[Issue]:
+    """Warn when the engine image uses a mutable tag (supply-chain drift risk)."""
+    from installer import supply_chain
+    from installer.compose_renderer import _engine_image
+    engine = catalog.get_engine(cfg.engine) or {}
+    image = _engine_image(engine, cfg.runtime_kind)
+    if supply_chain.classify_pin(image) == "mutable":
+        sev = "warning"
+        if cfg.security_profile_id == "enterprise_zero_trust":
+            sev = "fatal"   # zero-trust mandates pinned images
+        return [Issue(sev, "supply_chain.mutable_tag",
+                      f"Engine image '{image}' uses a mutable tag. Pin to a version/digest "
+                      "for reproducibility (run `audit-images`, scan with scripts/scan-images.sh).")]
+    return []
 
 
 def _check_policy(cfg: ResolvedConfig) -> list[Issue]:

@@ -6,7 +6,8 @@ PROFILE ?= production
 SIMULATE ?=
 
 .PHONY: help install preview generate generate-k8s up down logs ps health \
-        backup restore update rollback bundle bootstrap-tenants clean test
+        backup restore update rollback bundle bootstrap-tenants \
+        audit-images scan sbom clean test
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -56,6 +57,15 @@ bundle:  ## Build an offline/air-gapped bundle (images + deployment)
 
 bootstrap-tenants:  ## Create LiteLLM teams/keys from policy.yaml (multi_tenant)
 	./scripts/bootstrap-tenants.sh $(OUTPUT)
+
+audit-images:  ## List images + pinning status (supply-chain)
+	python -m installer audit-images --output $(OUTPUT)
+
+scan:  ## Scan images for vulnerabilities (Trivy/Grype)
+	./scripts/scan-images.sh $(OUTPUT)
+
+sbom:  ## Generate CycloneDX SBOMs (Syft)
+	./scripts/generate-sbom.sh $(OUTPUT)
 
 clean:  ## Remove generated output (keeps catalogs/profiles/templates)
 	rm -rf $(OUTPUT)

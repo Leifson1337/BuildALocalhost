@@ -144,6 +144,31 @@ def list_engines() -> None:
                       f"[dim]({eng.get('api')})[/dim]")
 
 
+@app.command("audit-images")
+def audit_images(
+    output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", help="Deployment-Verzeichnis."),
+) -> None:
+    """Image-Inventar + Pinning-Status (Supply-Chain). Warnt bei mutablen Tags."""
+    from installer import supply_chain
+    compose = output / "docker-compose.yml"
+    if not compose.exists():
+        console.print(f"[red]Keine docker-compose.yml in {output}[/red] — erst generieren.")
+        raise typer.Exit(1)
+    report = supply_chain.audit(compose)
+    _sev = {"digest": "green", "version": "cyan", "mutable": "yellow"}
+    for item in report["images"]:
+        c = _sev.get(item["pin"], "")
+        console.print(f"  [{c}]{item['pin']:8}[/{c}] {item['image']}")
+    if report["mutable"]:
+        console.print(f"\n[yellow]{len(report['mutable'])} mutable Tag(s)[/yellow] — "
+                      "für Produktion auf Version/Digest pinnen:")
+        for img in report["mutable"]:
+            console.print(f"  · {img}")
+        console.print("\nScan: scripts/scan-images.sh · SBOM: scripts/generate-sbom.sh")
+    else:
+        console.print("\n[green]Alle Images versions-/digest-gepinnt.[/green]")
+
+
 @app.command("plan")
 def plan(
     simulate: Optional[str] = typer.Option(None, "--simulate", help='Hardware, z.B. "4xH100".'),

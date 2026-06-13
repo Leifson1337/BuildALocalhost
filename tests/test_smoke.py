@@ -318,6 +318,31 @@ def test_policy_emitted_for_public_secure_without_tenancy():
         assert (out / "configs" / "policy" / "policy.yaml").exists()
 
 
+def test_supply_chain_classify_pin():
+    from installer.supply_chain import classify_pin
+    assert classify_pin("postgres:16") == "version"
+    assert classify_pin("vllm/vllm-openai:v0.6.6") == "version"
+    assert classify_pin("ghcr.io/open-webui/open-webui:main") == "mutable"
+    assert classify_pin("redis") == "mutable"            # no tag => latest
+    assert classify_pin("nginx@sha256:abc123") == "digest"
+    assert classify_pin("registry:5000/app:1.2.3") == "version"
+
+
+def test_supply_chain_audit_on_rendered():
+    from installer import supply_chain
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        report = supply_chain.audit(out / "docker-compose.yml")
+        assert report["images"]
+        # open-webui:main + litellm:main-stable are mutable in the catalog.
+        assert any("open-webui" in m for m in report["mutable"])
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

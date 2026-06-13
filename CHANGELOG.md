@@ -16,6 +16,14 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - Validator: Mandanten mit unbekannter Rolle / nicht-serviertem Modell = fatal
 - Vorschau zeigt Mandanten; Smoke-Tests gesamt 23/23
 
+#### Hinzugefügt (Supply-Chain-Security)
+- `installer/supply_chain.py` — Image-Inventar + Pinning-Klassifikation (digest/version/mutable)
+- CLI `audit-images` — listet Images + Pinning-Status, warnt bei mutablen Tags
+- Validator: mutables Engine-Image = Warnung (fatal unter `enterprise_zero_trust`)
+- `scripts/scan-images.sh` (Trivy→Grype) + `scripts/generate-sbom.sh` (Syft/CycloneDX),
+  graceful wenn Tool fehlt; Makefile-Targets `audit-images`/`scan`/`sbom`
+- Smoke-Tests gesamt 25/25
+
 
 #### Hinzugefügt
 - **Multi-Modell-Routing**: `inference.models: [{name, role, model}]` rendert eine Engine je

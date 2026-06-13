@@ -57,7 +57,8 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [ ] Engine-seitiges Auto-Tuning (max_num_seqs/gpu_mem_util — braucht Engine-Restart)
 - [x] Rollen-/Rechtesystem + Mandantenfähigkeit (`roles.yaml`, `multi_tenant.yaml`, Teams/Keys/Budgets)
 - [x] Policy-as-Code (zentrale `policy.yaml` + `bootstrap-tenants.sh`)
-- [ ] Image-/Supply-Chain-Security (Scanning, SBOM, Signaturen)
+- [x] Image-/Supply-Chain-Security: Pinning-Audit (`audit-images`) + Scan (Trivy/Grype) + SBOM (Syft)
+- [ ] Signaturprüfung (cosign) + Hash-Pinning automatisch
 - [ ] MIG-Unterstützung, Multi-Node/Cluster, NCCL-Test
 - [ ] Admin-Dashboard
 - [ ] Eval-/Qualitätsmodul (Langfuse, Golden Datasets, Regression)
