@@ -23,6 +23,8 @@ def detect_system() -> SystemProfile:
     )
     for g in gpus:
         g.interconnect = interconnect if g.count > 1 else g.interconnect
+    if gpus:
+        _detect_mig(gpus)
 
     profile = SystemProfile(
         mode="auto",
@@ -84,6 +86,7 @@ def _detect_via_nvml(notes: list[str]) -> list[GPUProfile]:
                     gpu_class=entry.get("class", "datacenter_mid"),
                     precision=list(entry.get("precision", ["bfloat16", "fp16"])),
                     authoritative=True,
+                    mig_capable=bool(entry.get("mig_capable", False)),
                 )
             )
         return gpus
@@ -128,9 +131,21 @@ def _detect_via_smi(notes: list[str]) -> list[GPUProfile]:
                 architecture=entry.get("architecture"),
                 gpu_class=entry.get("class", "datacenter_mid"),
                 precision=list(entry.get("precision", ["bfloat16", "fp16"])),
+                mig_capable=bool(entry.get("mig_capable", False)),
             )
         )
     return gpus
+
+
+def _detect_mig(gpus: list[GPUProfile]) -> None:
+    """Set mig_active on GPUs if `nvidia-smi` reports MIG mode enabled."""
+    out = _run(["nvidia-smi", "--query-gpu=mig.mode.current", "--format=csv,noheader"])
+    if not out:
+        return
+    if any("enabled" in line.lower() for line in out.splitlines()):
+        for g in gpus:
+            g.mig_active = True
+            g.mig_capable = True
 
 
 def _detect_interconnect(notes: list[str]) -> str:

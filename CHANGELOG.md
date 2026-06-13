@@ -32,6 +32,14 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - Langfuse (optional) als Observability-Service; im `enterprise`-Profil aktiviert
 - Makefile-Targets `status`/`eval`; Smoke-Tests gesamt 27/27
 
+#### Hinzugefügt (MIG + Multi-Node/NCCL)
+- MIG-Erkennung: `mig_capable`/`mig_active` (Katalog + `nvidia-smi`), Hinweise in
+  Recommendation + Vorschau; H100/H200 als MIG-fähig markiert
+- K8s-Manifeste: `nodeSelector` (`<gpu>.present`) + Tolerations für GPU-Knoten
+- NCCL-Test: `scripts/nccl-test.sh` (Single-Node Docker) + K8s-Job
+  `output/k8s/nccl-test.yaml`; Makefile-Target `nccl-test`
+- Smoke-Tests gesamt 29/29
+
 
 #### Hinzugefügt
 - **Multi-Modell-Routing**: `inference.models: [{name, role, model}]` rendert eine Engine je

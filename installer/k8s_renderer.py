@@ -36,6 +36,10 @@ def render(cfg: ResolvedConfig, output_dir: Path) -> list[Path]:
     written.append(_write(out / "manifests.yaml",
                           env.get_template("k8s/manifests.yaml.j2").render(**ctx)))
 
+    # NCCL test Job (run before serving to validate GPU interconnect).
+    written.append(_write(out / "nccl-test.yaml",
+                          env.get_template("k8s/nccl-test.yaml.j2").render(**ctx)))
+
     # Thin Helm chart wrapping the same values.
     chart = out / "helm" / cfg.profile_name
     (chart / "templates").mkdir(parents=True, exist_ok=True)

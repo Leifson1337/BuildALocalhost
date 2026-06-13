@@ -1,0 +1,31 @@
+# GENERATED NCCL test Job — Profile: {{ profile_name }}
+# Validates GPU-to-GPU communication (all_reduce) on a node before serving.
+# Multi-node NCCL over InfiniBand/RDMA needs the MPI Operator — see docs/INSTALLER.md.
+# Apply: kubectl apply -f nccl-test.yaml ; then: kubectl logs job/nccl-test -n {{ namespace }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nccl-test
+  namespace: {{ namespace }}
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+{% if engine_gpu_required %}
+      nodeSelector:
+        {{ gpu_resource_key }}.present: "true"
+      tolerations:
+        - {key: {{ gpu_resource_key }}, operator: Exists, effect: NoSchedule}
+{% endif %}
+      containers:
+        - name: nccl-test
+          image: nvcr.io/nvidia/pytorch:24.10-py3
+          command: ["bash", "-lc"]
+          args:
+            - >
+              all_reduce_perf -b 8 -e 256M -f 2 -g {{ gpu_per_pod }}
+              || (echo "nccl-tests not in image; build from https://github.com/NVIDIA/nccl-tests" && exit 1)
+          resources:
+            limits:
+              {{ gpu_resource_key }}: {{ gpu_per_pod }}

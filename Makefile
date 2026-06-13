@@ -67,6 +67,9 @@ scan:  ## Scan images for vulnerabilities (Trivy/Grype)
 sbom:  ## Generate CycloneDX SBOMs (Syft)
 	./scripts/generate-sbom.sh $(OUTPUT)
 
+nccl-test:  ## Single-node NCCL all-reduce sanity test (Docker)
+	./scripts/nccl-test.sh
+
 status:  ## Admin overview of the generated deployment
 	python -m installer status --output $(OUTPUT)
 

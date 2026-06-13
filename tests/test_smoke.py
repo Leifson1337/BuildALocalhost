@@ -370,6 +370,34 @@ def test_langfuse_rendered_in_enterprise():
         assert "LANGFUSE_NEXTAUTH_SECRET=" in env
 
 
+def test_mig_capability_detected_h100():
+    system = build_simulation("8xH100")
+    assert system.mig_capable is True
+    assert system.mig_active is False        # simulation never enables MIG
+    rec = recommend(system, "high_throughput_chat")
+    assert any("MIG-capable" in w for w in rec.warnings)
+
+
+def test_k8s_node_selector_and_nccl():
+    import yaml
+    from installer import k8s_renderer
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="multi_h100", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        k8s_renderer.render(cfg, out)
+        manifests = (out / "k8s" / "manifests.yaml").read_text(encoding="utf-8")
+        assert "nvidia.com/gpu.present" in manifests
+        assert "tolerations" in manifests
+        nccl = out / "k8s" / "nccl-test.yaml"
+        assert nccl.exists()
+        doc = yaml.safe_load(nccl.read_text(encoding="utf-8"))
+        assert doc["kind"] == "Job"
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

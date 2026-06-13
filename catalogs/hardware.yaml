@@ -14,18 +14,21 @@ nvidia:
       class: datacenter_high
       default_interconnect: nvswitch
       precision: [bfloat16, fp16, fp8]
+      mig_capable: true
     - model: H100 PCIe
       aliases: [h100pcie, h100-pcie]
       vram_gb: 80
       class: datacenter_high
       default_interconnect: pcie
       precision: [bfloat16, fp16, fp8]
+      mig_capable: true
     - model: H200
       aliases: [h200]
       vram_gb: 141
       class: datacenter_high
       default_interconnect: nvswitch
       precision: [bfloat16, fp16, fp8]
+      mig_capable: true
 
   blackwell:
     - model: B100

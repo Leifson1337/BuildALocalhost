@@ -59,7 +59,8 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Policy-as-Code (zentrale `policy.yaml` + `bootstrap-tenants.sh`)
 - [x] Image-/Supply-Chain-Security: Pinning-Audit (`audit-images`) + Scan (Trivy/Grype) + SBOM (Syft)
 - [ ] Signaturprüfung (cosign) + Hash-Pinning automatisch
-- [ ] MIG-Unterstützung, Multi-Node/Cluster, NCCL-Test
+- [x] MIG-Erkennung (+ Empfehlungs-/Vorschau-Hinweise) · K8s nodeSelector/Tolerations · NCCL-Test (Docker + K8s-Job)
+- [ ] MIG-Geräte-Zuweisung (UUID-Binding) + Multi-Node MPI-Operator (InfiniBand/RDMA)
 - [x] Admin-Überblick: Grafana-Overview-Dashboard + `status`-CLI
 - [x] Eval-/Qualitätsmodul: Golden-Dataset-Runner (`eval`) + Langfuse (optional, enterprise)
 - [ ] K8s-Parität für RAG/MCP/Auth/Monitoring (Compose bereits vollständig)

@@ -40,6 +40,10 @@ def _hardware(cfg: ResolvedConfig) -> None:
         for g in sys.gpus:
             t.add_row("GPU", f"{g.count}× {g.model} @ {g.vram_gb} GB ({g.interconnect})")
         t.add_row("VRAM gesamt", f"{sys.total_vram_gb} GB")
+        if sys.mig_active:
+            t.add_row("MIG", "[yellow]aktiv (GPU partitioniert)[/yellow]")
+        elif sys.mig_capable:
+            t.add_row("MIG", "fähig (aus)")
     else:
         t.add_row("GPU", "[yellow]keine erkannt (CPU/Simulation)[/yellow]")
     t.add_row("CPU-Kerne", str(sys.cpu_cores or "—"))

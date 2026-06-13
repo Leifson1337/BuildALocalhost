@@ -27,6 +27,8 @@ class GPUProfile:
     gpu_class: Optional[str] = None          # datacenter_high | consumer | ...
     precision: list[str] = field(default_factory=list)
     authoritative: bool = True               # False => catalog estimate, not measured
+    mig_capable: bool = False                # GPU supports Multi-Instance GPU
+    mig_active: bool = False                 # MIG mode currently enabled (auto-detect only)
 
     @property
     def total_vram_gb(self) -> float:
@@ -70,6 +72,14 @@ class SystemProfile:
         return self.primary_gpu.gpu_class or "consumer"
 
     @property
+    def mig_capable(self) -> bool:
+        return any(g.mig_capable for g in self.gpus)
+
+    @property
+    def mig_active(self) -> bool:
+        return any(g.mig_active for g in self.gpus)
+
+    @property
     def runtime_kind(self) -> str:
         """GPU runtime family used to pick container images: cuda | rocm | cpu."""
         if not self.gpus:
@@ -102,6 +112,7 @@ def gpu_from_catalog(model_query: str, count: int) -> GPUProfile:
         gpu_class=entry.get("class"),
         precision=list(entry.get("precision", [])),
         authoritative=bool(entry.get("authoritative", True)),
+        mig_capable=bool(entry.get("mig_capable", False)),
     )
 
 

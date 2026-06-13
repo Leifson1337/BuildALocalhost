@@ -156,6 +156,12 @@ def _emit_warnings(system, gpu_class, interconnect, warnings: list[str]) -> None
         warnings.append("NVIDIA Docker runtime not detected — GPU containers will fail.")
     if gpu_class == "cpu_only":
         warnings.append("No GPU: expect very low throughput; use small GGUF models only.")
+    if system.mig_active:
+        warnings.append("MIG is enabled: each model is bound to a GPU slice; tensor parallelism "
+                        "across full GPUs is unavailable until MIG is disabled.")
+    elif system.mig_capable and system.total_gpu_count >= 2:
+        warnings.append("GPUs are MIG-capable: consider partitioning for many small concurrent "
+                        "models (see docs). Large models need full GPUs (MIG off).")
 
 
 def _alternatives(engines: list[str], gpu_class: str) -> list[Alternative]:

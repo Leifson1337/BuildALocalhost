@@ -123,6 +123,12 @@ spec:
   template:
     metadata: {labels: {app: {{ m.service }}}}
     spec:
+{% if engine_gpu_required %}
+      nodeSelector:
+        {{ gpu_resource_key }}.present: "true"
+      tolerations:
+        - {key: {{ gpu_resource_key }}, operator: Exists, effect: NoSchedule}
+{% endif %}
       containers:
         - name: engine
           image: {{ engine_image }}
