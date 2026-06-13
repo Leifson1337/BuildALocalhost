@@ -13,6 +13,19 @@ model_list:
     model_info: {role: {{ m.role }}}
 {% endif %}
 {% endfor %}
+{% for e in endpoints %}
+  # external/extra endpoint — reachable via this gateway as model '{{ e.name }}'
+  - model_name: {{ e.name }}
+    litellm_params:
+      model: {{ e.litellm_model }}
+{% if e.api_base %}
+      api_base: {{ e.api_base }}
+{% endif %}
+      api_key: {{ e.api_key_ref }}
+{% if e.mode and e.mode != "chat" %}
+    model_info: {mode: {{ e.mode }}}
+{% endif %}
+{% endfor %}
 
 general_settings:
   master_key: ${LITELLM_MASTER_KEY}

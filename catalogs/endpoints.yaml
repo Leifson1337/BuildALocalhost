@@ -1,0 +1,57 @@
+# Endpoint catalog — connect ANY OpenAI-compatible upstream through the LiteLLM gateway.
+# Presets make common providers one-liners; `custom` accepts any api_base.
+# A profile can declare:
+#   endpoints:
+#     - {name: gpt4o, preset: openai, model: gpt-4o}
+#     - {name: my-llm, api_base: https://host/v1, model: my-model, api_key_env: MY_KEY}
+# All become extra model_names on the same gateway, reachable via /v1/chat/completions.
+
+presets:
+  - id: openai
+    name: OpenAI
+    api_base: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    provider: openai
+  - id: azure_openai
+    name: Azure OpenAI
+    api_base: ""                 # set per-deployment, e.g. https://<res>.openai.azure.com
+    api_key_env: AZURE_API_KEY
+    provider: azure
+  - id: anthropic
+    name: Anthropic (via LiteLLM)
+    api_base: ""
+    api_key_env: ANTHROPIC_API_KEY
+    provider: anthropic
+  - id: together
+    name: Together AI
+    api_base: https://api.together.xyz/v1
+    api_key_env: TOGETHER_API_KEY
+    provider: openai
+  - id: groq
+    name: Groq
+    api_base: https://api.groq.com/openai/v1
+    api_key_env: GROQ_API_KEY
+    provider: openai
+  - id: openrouter
+    name: OpenRouter
+    api_base: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    provider: openai
+  - id: vllm_remote
+    name: Remote vLLM / OpenAI-compatible
+    api_base: ""                 # http://other-host:8000/v1
+    api_key_env: REMOTE_API_KEY
+    provider: openai
+  - id: custom
+    name: Custom (beliebige OpenAI-kompatible URL)
+    api_base: ""
+    api_key_env: CUSTOM_API_KEY
+    provider: openai
+
+# Standard endpoints the gateway always exposes (documentation).
+gateway_endpoints:
+  - /v1/chat/completions
+  - /v1/completions
+  - /v1/embeddings
+  - /v1/models
+  - /v1/rerank          # if a reranker endpoint is registered

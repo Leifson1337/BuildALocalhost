@@ -99,6 +99,18 @@ def load_roles() -> dict[str, Any]:
     return _load_yaml(CATALOGS_DIR / "roles.yaml")
 
 
+@functools.lru_cache(maxsize=None)
+def load_endpoints() -> dict[str, Any]:
+    return _load_yaml(CATALOGS_DIR / "endpoints.yaml")
+
+
+def get_endpoint_preset(preset_id: str) -> dict[str, Any] | None:
+    for p in load_endpoints().get("presets", []):
+        if p.get("id") == preset_id:
+            return p
+    return None
+
+
 def get_role(role_id: str) -> dict[str, Any] | None:
     for role in load_roles().get("roles", []):
         if role.get("id") == role_id:

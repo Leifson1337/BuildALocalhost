@@ -160,6 +160,30 @@ def test_socket_proxy_replaces_raw_socket():
         assert "docker-socket-proxy" in text
 
 
+def test_custom_endpoints_into_litellm():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(
+        profile_name="production", system=system, recommendation=rec, goal="high_throughput_chat",
+        overrides={"endpoints": [
+            {"name": "gpt4o", "preset": "openai", "model": "gpt-4o"},
+            {"name": "myllm", "api_base": "https://host/v1", "model": "m", "api_key_env": "MY_KEY"},
+        ]},
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        lc = yaml.safe_load((out / "configs" / "litellm" / "config.yaml").read_text(encoding="utf-8"))
+        names = [m["model_name"] for m in lc["model_list"]]
+        assert "gpt4o" in names and "myllm" in names
+        gpt = next(m for m in lc["model_list"] if m["model_name"] == "gpt4o")
+        assert gpt["litellm_params"]["model"] == "openai/gpt-4o"
+        assert gpt["litellm_params"]["api_key"] == "os.environ/OPENAI_API_KEY"
+        env = (out / ".env").read_text(encoding="utf-8")
+        assert "OPENAI_API_KEY=" in env and "MY_KEY=" in env
+
+
 def test_rag_efficient_leann_turboquant():
     import yaml
     system = build_simulation("8xH100")

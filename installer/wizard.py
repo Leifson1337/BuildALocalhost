@@ -131,12 +131,38 @@ def build_overrides(
     if auth:
         overrides.setdefault("web", {})["auth"] = auth
 
+    # Easy endpoint connection (any OpenAI-compatible upstream) — offered to everyone.
+    eps = _select_endpoints(q)
+    if eps:
+        overrides["endpoints"] = eps
+
     if expert:
         _expert_rag(q, overrides)
         _expert_mcp(q, overrides, sec_profile)
         _expert_inference(q, overrides)
 
     return model, overrides
+
+
+def _select_endpoints(q) -> list[dict[str, Any]]:
+    """Let the user attach extra OpenAI-compatible endpoints (presets or custom URL)."""
+    if not q.confirm("Weitere Endpunkte anbinden (OpenAI-kompatibel)?", default=False).ask():
+        return []
+    presets = catalog.load_endpoints().get("presets", [])
+    eps: list[dict[str, Any]] = []
+    while True:
+        choices = [{"name": p["name"], "value": p["id"]} for p in presets]
+        preset = q.select("Provider/Preset?", choices=choices, default="custom").ask()
+        name = q.text("Anzeigename (Modellname am Gateway)?", default=preset).ask()
+        modelid = q.text("Modell-ID beim Provider?", default="gpt-4o").ask()
+        ep = {"name": name, "preset": preset, "model": modelid}
+        meta = catalog.get_endpoint_preset(preset) or {}
+        if not meta.get("api_base"):
+            ep["api_base"] = q.text("api_base URL?", default="https://host/v1").ask()
+        eps.append(ep)
+        if not q.confirm("Noch einen Endpunkt hinzufügen?", default=False).ask():
+            break
+    return eps
 
 
 def _select_engine(q, rec: Recommendation) -> Optional[str]:

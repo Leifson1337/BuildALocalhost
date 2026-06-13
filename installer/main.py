@@ -249,6 +249,19 @@ def audit_images(
         console.print("\n[green]Alle Images versions-/digest-gepinnt.[/green]")
 
 
+@app.command("list-endpoints")
+def list_endpoints() -> None:
+    """Verfügbare Endpunkt-Presets + Gateway-Endpunkte auflisten."""
+    eps = catalog.load_endpoints()
+    console.print("[bold]Presets (einfach anbindbar):[/bold]")
+    for p in eps.get("presets", []):
+        base = p.get("api_base") or "<api_base setzen>"
+        console.print(f"  [bold]{p['id']}[/bold] — {p['name']} [dim]{base}[/dim]")
+    console.print("\n[bold]Gateway-Endpunkte:[/bold]")
+    for e in eps.get("gateway_endpoints", []):
+        console.print(f"  {e}")
+
+
 @app.command("plan")
 def plan(
     simulate: Optional[str] = typer.Option(None, "--simulate", help='Hardware, z.B. "4xH100".'),

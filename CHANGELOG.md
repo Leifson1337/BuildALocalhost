@@ -155,3 +155,13 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - `configs/rag/config.yaml` generiert; Validator-Warnung fuer externe/unverifizierte
   Methoden (verify_image/verify_integration), nicht fatal; faellt sauber zurueck
 - Smoke-Tests gesamt 35/35
+
+### Stufe 3 (Forts.) — Einfache Endpunkt-Anbindung
+
+- `catalogs/endpoints.yaml`: Presets (OpenAI/Azure/Anthropic/Together/Groq/OpenRouter/
+  remote vLLM/custom) + Standard-Gateway-Endpunkte
+- Profil-Feld `endpoints: [...]` + Wizard-Schritt: beliebige OpenAI-kompatible Upstreams
+  werden als zusaetzliche model_names ueber dasselbe Gateway erreichbar
+- Lokales Embedding-Modell wird automatisch als Gateway-Endpunkt (`text-embedding`) exponiert
+- API-Key-Platzhalter landen in der `.env`; CLI `list-endpoints`
+- Smoke-Tests gesamt 36/36

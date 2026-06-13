@@ -129,6 +129,8 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "auth": _auth_context(cfg),
         "rag": _rag_context(cfg),
         "mcp": _mcp_context(cfg),
+        "endpoints": _endpoints_context(cfg),
+        "endpoint_env_vars": _endpoint_env_vars(cfg),
         # inference params (also used in litellm template + env)
         "tensor_parallel_size": inf.get("tensor_parallel_size", 1),
         "pipeline_parallel_size": inf.get("pipeline_parallel_size", 1),
@@ -260,6 +262,49 @@ def _rag_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "anythingllm_image": rag_cat["document_apps"][0]["image"],
         "anythingllm_port": rag_cat["document_apps"][0]["internal_port"],
     }
+
+
+def _endpoints_context(cfg: ResolvedConfig) -> list[dict[str, Any]]:
+    """Extra OpenAI-compatible upstreams to register on the gateway (+ local embeddings).
+
+    Each entry → an additional LiteLLM model_name so ANY endpoint is reachable via the same
+    /v1 base URL. Presets fill api_base/api_key automatically.
+    """
+    out: list[dict[str, Any]] = []
+    for ep in cfg.data.get("endpoints", []) or []:
+        preset = catalog.get_endpoint_preset(ep.get("preset", "")) or {}
+        provider = ep.get("provider", preset.get("provider", "openai"))
+        api_base = ep.get("api_base") or preset.get("api_base") or ""
+        key_env = ep.get("api_key_env") or preset.get("api_key_env") or "CUSTOM_API_KEY"
+        out.append({
+            "name": ep["name"],
+            "litellm_model": f"{provider}/{ep['model']}",
+            "api_base": api_base,
+            "api_key_ref": "os.environ/" + key_env,
+            "mode": ep.get("mode", "chat"),
+        })
+    # Expose the local embedding model through the gateway as well (one base URL for all).
+    if cfg.rag_enabled:
+        rag = _rag_context(cfg)
+        out.append({
+            "name": "text-embedding",
+            "litellm_model": "openai/" + rag["embeddings"]["model"],
+            "api_base": f"http://embeddings:{rag['embeddings']['port']}",
+            "api_key_ref": "dummy",
+            "mode": "embedding",
+        })
+    return out
+
+
+def _endpoint_env_vars(cfg: ResolvedConfig) -> list[str]:
+    """Distinct API-key env vars needed by the declared endpoints (rendered into .env)."""
+    seen: list[str] = []
+    for ep in cfg.data.get("endpoints", []) or []:
+        preset = catalog.get_endpoint_preset(ep.get("preset", "")) or {}
+        key_env = ep.get("api_key_env") or preset.get("api_key_env")
+        if key_env and key_env not in seen:
+            seen.append(key_env)
+    return seen
 
 
 def _mcp_context(cfg: ResolvedConfig) -> dict[str, Any]:
