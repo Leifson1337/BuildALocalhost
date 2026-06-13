@@ -1,0 +1,9 @@
+# Agent skill.
+name: code-review
+type: agent
+enabled: true
+description: Fokussiertes Code-Review (Korrektheit, Sicherheit, Lesbarkeit).
+instructions: |
+  Reviewe Code in dieser Reihenfolge: (1) Korrektheits-Bugs, (2) Sicherheitsprobleme,
+  (3) Vereinfachung/Wiederverwendung. Nenne konkrete Zeilen, schlage Patches vor,
+  und unterscheide klar zwischen "muss" und "nice to have".

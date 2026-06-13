@@ -136,12 +136,32 @@ def build_overrides(
     if eps:
         overrides["endpoints"] = eps
 
+    # Skills (agent capabilities + MCP-tool skills).
+    sk = _select_skills(q)
+    if sk:
+        overrides["skills"] = sk
+
     if expert:
         _expert_rag(q, overrides)
         _expert_mcp(q, overrides, sec_profile)
         _expert_inference(q, overrides)
 
     return model, overrides
+
+
+def _select_skills(q) -> list[str]:
+    """Let the user enable agent/MCP skills discovered under skills/."""
+    from installer import skills
+    names = skills.available_skill_names()
+    if not names:
+        return []
+    choices = []
+    for n in names:
+        sk = skills.get_skill(n) or {}
+        label = f"{n}  [{sk.get('type', 'agent')}] — {sk.get('description', '')}"
+        choices.append({"name": label, "value": n})
+    picked = q.checkbox("Welche Skills aktivieren?", choices=choices).ask()
+    return picked or []
 
 
 def _select_endpoints(q) -> list[dict[str, Any]]:

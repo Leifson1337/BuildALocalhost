@@ -160,6 +160,49 @@ def test_socket_proxy_replaces_raw_socket():
         assert "docker-socket-proxy" in text
 
 
+def test_skills_loader_discovers_agent_and_mcp():
+    from installer import skills
+    d = skills.discover()
+    agent_names = [s["name"] for s in d["agent"]]
+    assert "web-research" in agent_names and "code-review" in agent_names
+    mcp_ids = [s["id"] for s in d["mcp_servers"]]
+    assert "jira-mcp" in mcp_ids
+
+
+def test_agent_skills_rendered_in_profile():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "agents_mcp")
+    cfg = profile_builder.build(profile_name="agents_mcp", system=system,
+                                recommendation=rec, goal="agents_mcp")
+    assert [s["name"] for s in cfg.agent_skills] == ["web-research", "code-review"]
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        sk = (out / "configs" / "skills" / "skills.yaml")
+        assert sk.exists()
+        data = yaml.safe_load(sk.read_text(encoding="utf-8"))
+        assert [s["name"] for s in data["skills"]] == ["web-research", "code-review"]
+
+
+def test_mcp_skill_enables_gateway_and_policy():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "agents_mcp")
+    # Start from a profile with MCP off; enabling an mcp skill must turn it on.
+    cfg = profile_builder.build(profile_name="production", system=system, recommendation=rec,
+                                goal="agents_mcp", overrides={"skills": ["jira-tool"]})
+    assert cfg.mcp_enabled
+    assert "jira-mcp" in cfg.data["mcp"]["servers"]
+    issues = validators.validate(cfg, check_ports=False)
+    assert not validators.has_fatal(issues)        # advanced tier, allowed
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        pol = yaml.safe_load((out / "configs" / "mcp" / "policies.yaml").read_text(encoding="utf-8"))
+        assert any(s["id"] == "jira-mcp" for s in pol["servers"])
+
+
 def test_custom_endpoints_into_litellm():
     import yaml
     system = build_simulation("8xH100")

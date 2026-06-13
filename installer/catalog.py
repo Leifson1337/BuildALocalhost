@@ -71,7 +71,23 @@ def load_rag() -> dict[str, Any]:
 def load_mcp() -> dict[str, Any]:
     data = _load_yaml(CATALOGS_DIR / "mcp_servers.yaml")
     _merge_plugins(data, "servers", "mcp_servers")
+    _merge_skills_mcp(data)
     return data
+
+
+def _merge_skills_mcp(data: dict[str, Any]) -> None:
+    """Merge MCP-tool skills (from skills/) into the MCP server catalog (deduped by id)."""
+    try:
+        from installer import skills
+        extra = skills.mcp_server_specs()
+    except Exception:
+        return
+    existing = data.setdefault("servers", [])
+    have = {e.get("id") for e in existing}
+    for srv in extra:
+        if srv.get("id") not in have:
+            existing.append(srv)
+            have.add(srv.get("id"))
 
 
 def _merge_plugins(data: dict[str, Any], list_key: str, kind: str) -> None:

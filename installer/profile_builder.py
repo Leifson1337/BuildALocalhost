@@ -67,6 +67,10 @@ class ResolvedConfig:
         return bool(self.data.get("tenancy", {}).get("enabled", False))
 
     @property
+    def agent_skills(self) -> list:
+        return self.data.get("skills_agent", []) or []
+
+    @property
     def policy_enabled(self) -> bool:
         """Emit a policy document for multi-tenant or auth-protected deployments."""
         return self.tenancy_enabled or self.security_profile_id in (
@@ -113,6 +117,9 @@ def build(
     if overrides:
         _deep_merge(data, overrides)
 
+    # 4b) expand enabled skills (agent + MCP-tool skills)
+    _apply_skills(data)
+
     # 5) generate secrets
     secret_values = {
         "POSTGRES_PASSWORD": _token(),
@@ -139,6 +146,41 @@ def build(
 
 
 # --------------------------------------------------------------------------- helpers
+
+def _apply_skills(data: dict) -> None:
+    """Expand `skills: [names]` into agent-skill manifests + MCP-tool servers.
+
+    Agent skills land in data['skills_agent']; MCP skills enable the gateway and add their
+    server id to data['mcp']['servers'].
+    """
+    enabled = data.get("skills", []) or []
+    if not enabled:
+        return
+    from installer import skills as skills_mod
+    agent_out: list[dict] = []
+    for name in enabled:
+        skill = skills_mod.get_skill(name)
+        if not skill:
+            continue
+        if skill.get("type") == "mcp":
+            server = skill.get("server") or {}
+            sid = server.get("id")
+            if sid:
+                mcp = data.setdefault("mcp", {})
+                mcp["enabled"] = True
+                servers = mcp.setdefault("servers", [])
+                if sid not in servers:
+                    servers.append(sid)
+        else:
+            agent_out.append({
+                "name": skill.get("name", name),
+                "description": skill.get("description", ""),
+                "instructions": skill.get("instructions", ""),
+                "uses": skill.get("uses", []) or [],
+            })
+    if agent_out:
+        data["skills_agent"] = agent_out
+
 
 def _apply_tuning(data: dict, system, *, goal: str, optimize_for: str) -> None:
     """Fill serving params from the auto-optimizer for maximum efficient throughput.

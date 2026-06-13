@@ -105,6 +105,8 @@ def _stack(cfg: ResolvedConfig) -> None:
                          f"+ reranker ({rd.get('document_app')})")
     if cfg.mcp_enabled:
         t.add_row("MCP", ", ".join(cfg.data.get("mcp", {}).get("servers", []) or ["—"]))
+    if cfg.agent_skills:
+        t.add_row("Skills", ", ".join(s.get("name", "?") for s in cfg.agent_skills))
     if cfg.tenancy_enabled:
         tenants = cfg.data.get("tenancy", {}).get("tenants", []) or []
         t.add_row("Mandanten", ", ".join(t_.get("id", "?") for t_ in tenants) or "—")

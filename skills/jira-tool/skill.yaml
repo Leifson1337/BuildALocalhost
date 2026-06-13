@@ -1,0 +1,13 @@
+# MCP-tool skill: exposes a tool server through the MCP gateway (deny-by-default).
+name: jira-tool
+type: mcp
+enabled: true
+description: Jira-Tickets lesen/kommentieren (gescoped, Bestätigung für Writes).
+server:
+  id: jira-mcp
+  tier: advanced
+  package: "@scope/mcp-server-jira"
+  allowed_tools: [search_issues, get_issue, add_comment]
+  denied_tools: [delete_issue, transition_issue]
+  require_confirmation: [write, external_http]
+  network: internal_only

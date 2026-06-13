@@ -1,0 +1,10 @@
+# Agent skill (capability surfaced to the UI/agent layer).
+name: web-research
+type: agent
+enabled: true
+description: Strukturierte Webrecherche mit Quellenangaben.
+uses: [web-search-proxy]        # MCP server it relies on (optional)
+instructions: |
+  Wenn der Nutzer eine Recherche möchte: formuliere 2-3 präzise Suchanfragen,
+  fasse die Ergebnisse neutral zusammen und gib immer die Quellen (URLs) an.
+  Markiere Unsicherheiten explizit und vermische keine widersprüchlichen Quellen.

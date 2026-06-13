@@ -42,6 +42,12 @@ mcp:
     - postgres-readonly
     - web-search-proxy
 
+# Skills: agent capabilities + MCP-tool skills (see skills/). MCP skills auto-enable
+# their gateway server. Edit/extend freely or pick in the wizard.
+skills:
+  - web-research
+  - code-review
+
 monitoring:
   enabled: true
   prometheus: true

@@ -165,3 +165,13 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - Lokales Embedding-Modell wird automatisch als Gateway-Endpunkt (`text-embedding`) exponiert
 - API-Key-Platzhalter landen in der `.env`; CLI `list-endpoints`
 - Smoke-Tests gesamt 36/36
+
+### Stufe 3 (Forts.) — Skills-System (Agent + MCP)
+
+- `installer/skills.py` + `skills/`: Skill-Manifeste (`skill.yaml`); Typen `agent`
+  (Capability/System-Prompt) und `mcp` (Tool-Server, deny-by-default ueber den Gateway)
+- Profil-Feld `skills: [names]` + Wizard-Schritt; Agent-Skills -> `configs/skills/skills.yaml`
+  + System-Addendum, MCP-Skills aktivieren den Gateway und landen in den Policies
+- MCP-Skills werden in den MCP-Katalog gemergt (dedupe); Beispiel-Skills + README;
+  CLI `list-skills`; `agents_mcp` zeigt Skills
+- Smoke-Tests gesamt 39/39

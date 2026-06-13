@@ -249,6 +249,20 @@ def audit_images(
         console.print("\n[green]Alle Images versions-/digest-gepinnt.[/green]")
 
 
+@app.command("list-skills")
+def list_skills() -> None:
+    """Verfügbare Skills (Agent + MCP) auflisten."""
+    from installer import skills
+    names = skills.available_skill_names()
+    if not names:
+        console.print("Keine Skills unter skills/ gefunden.")
+        return
+    for n in names:
+        sk = skills.get_skill(n) or {}
+        console.print(f"[bold]{n}[/bold] [dim]({sk.get('type','agent')})[/dim] — "
+                      f"{sk.get('description','')}")
+
+
 @app.command("list-endpoints")
 def list_endpoints() -> None:
     """Verfügbare Endpunkt-Presets + Gateway-Endpunkte auflisten."""

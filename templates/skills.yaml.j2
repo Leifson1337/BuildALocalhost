@@ -1,0 +1,21 @@
+# GENERATED agent skills — Profile: {{ profile_name }}
+# Capability skills surfaced to the UI/agent layer (Open WebUI / AnythingLLM system prompts
+# or tool descriptions). MCP-tool skills are wired separately via the MCP gateway policies.
+skills:
+{% for s in agent_skills %}
+  - name: {{ s.name }}
+    description: "{{ s.description }}"
+{% if s.uses %}
+    uses: {{ s.uses }}
+{% endif %}
+    instructions: |
+      {{ s.instructions | indent(6) }}
+{% endfor %}
+
+# Combined system addendum (concatenate into the assistant's system prompt):
+system_addendum: |
+{% for s in agent_skills %}
+  ## Skill: {{ s.name }}
+  {{ s.instructions | indent(2) }}
+
+{% endfor %}

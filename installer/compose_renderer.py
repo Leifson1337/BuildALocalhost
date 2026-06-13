@@ -61,6 +61,10 @@ def render(cfg: ResolvedConfig, output_dir: Path) -> list[Path]:
         (output_dir / "configs" / "rag").mkdir(parents=True, exist_ok=True)
         written.append(_write(output_dir / "configs" / "rag" / "config.yaml",
                               env.get_template("rag-config.yaml.j2").render(**ctx)))
+    if ctx["agent_skills"]:
+        (output_dir / "configs" / "skills").mkdir(parents=True, exist_ok=True)
+        written.append(_write(output_dir / "configs" / "skills" / "skills.yaml",
+                              env.get_template("skills.yaml.j2").render(**ctx)))
     if ctx["mcp"]["enabled"]:
         (output_dir / "configs" / "mcp").mkdir(parents=True, exist_ok=True)
         written.append(_write(output_dir / "configs" / "mcp" / "policies.yaml",
@@ -131,6 +135,7 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "mcp": _mcp_context(cfg),
         "endpoints": _endpoints_context(cfg),
         "endpoint_env_vars": _endpoint_env_vars(cfg),
+        "agent_skills": cfg.agent_skills,
         # inference params (also used in litellm template + env)
         "tensor_parallel_size": inf.get("tensor_parallel_size", 1),
         "pipeline_parallel_size": inf.get("pipeline_parallel_size", 1),
