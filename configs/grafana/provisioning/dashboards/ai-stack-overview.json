@@ -1,0 +1,74 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "title": "AI Stack — Overview",
+  "uid": "ai-stack-overview",
+  "schemaVersion": 39,
+  "tags": ["ai-stack"],
+  "timezone": "browser",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "GPU utilization (%)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "DCGM_FI_DEV_GPU_UTIL", "legendFormat": "gpu {{gpu}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU memory used (MiB)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "DCGM_FI_DEV_FB_USED", "legendFormat": "gpu {{gpu}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU power (W)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "DCGM_FI_DEV_POWER_USAGE", "legendFormat": "gpu {{gpu}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU temperature (°C)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        { "expr": "DCGM_FI_DEV_GPU_TEMP", "legendFormat": "gpu {{gpu}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "LiteLLM requests / sec (by model)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        { "expr": "sum(rate(litellm_requests_metric_total[5m])) by (model)", "legendFormat": "{{model}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Spend (USD total)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 16 },
+      "targets": [ { "expr": "sum(litellm_spend_metric_total)", "refId": "A" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container CPU (cAdvisor)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 16 },
+      "targets": [
+        { "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\".+\"}[5m])) by (name)", "legendFormat": "{{name}}", "refId": "A" }
+      ]
+    }
+  ]
+}

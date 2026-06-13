@@ -113,8 +113,9 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "open_webui_port": expose.get("open_webui_port", 3000),
         "litellm_port": expose.get("litellm_port", 4000),
         "ui_open_webui": "open-webui" in (web.get("ui") or []),
-        # monitoring
+        # monitoring + observability
         "monitoring": cfg.monitoring_enabled,
+        "observability_langfuse": bool(data.get("observability", {}).get("langfuse", False)),
         # security
         "security_profile": cfg.security_profile_id,
         "rate_limit_per_minute": sec.get("rate_limit_per_minute", 60),

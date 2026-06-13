@@ -473,3 +473,30 @@ services:
 {% endif %}
     restart: unless-stopped
 {% endif %}
+
+{% if observability_langfuse %}
+  # --- Observability: Langfuse (traces, prompt mgmt, evals) -----------------
+  langfuse:
+    image: langfuse/langfuse:2
+    environment:
+      DATABASE_URL: postgresql://ai_stack:${POSTGRES_PASSWORD}@postgres:5432/ai_stack
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
+      SALT: ${LANGFUSE_SALT}
+      NEXTAUTH_URL: https://langfuse.${API_DOMAIN:-example.com}
+      TELEMETRY_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal{% if monitoring %}, monitoring{% endif %}]
+{% if uses_traefik %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.langfuse.rule=Host(`langfuse.${API_DOMAIN}`)"
+      - "traefik.http.routers.langfuse.entrypoints=websecure"
+{% if tls %}
+      - "traefik.http.routers.langfuse.tls.certresolver=le"
+{% endif %}
+      - "traefik.http.services.langfuse.loadbalancer.server.port=3000"
+{% endif %}
+    restart: unless-stopped
+{% endif %}

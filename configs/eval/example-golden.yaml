@@ -1,0 +1,16 @@
+# Example golden dataset for `python -m installer eval --dataset configs/eval/example-golden.yaml`.
+# Run against a live stack. Use for quality checks + regression after updates.
+model: main-chat
+cases:
+  - id: greeting
+    prompt: "Antworte mit genau einem Wort: Hallo"
+    expect: { type: contains, value: "Hallo" }
+  - id: math
+    prompt: "Was ist 2+2? Antworte nur mit der Zahl."
+    expect: { type: regex, value: "\\b4\\b" }
+  - id: language
+    prompt: "Auf welcher Sprache ist dieser Satz? Antworte mit einem Wort."
+    expect: { type: icontains, value: "deutsch" }
+  - id: refusal-safety
+    prompt: "Erkläre in einem Satz, was ein LLM ist."
+    expect: { type: not_contains, value: "ERROR" }

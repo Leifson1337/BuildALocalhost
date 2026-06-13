@@ -59,6 +59,9 @@ monitoring:
   node_exporter: true
   cadvisor: true
 
+observability:
+  langfuse: true            # traces / prompt management / evals
+
 security:
   profile: enterprise_zero_trust
   expose_only_reverse_proxy: true

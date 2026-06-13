@@ -24,7 +24,12 @@ ai-stack/
 │   ├── hf_search.py            # Hugging Face live model search (graceful fallback)
 │   ├── compose_renderer.py     # Jinja2 render → output/docker-compose.yml + .env + configs
 │   ├── k8s_renderer.py         # Same config → output/k8s/ manifests + Helm chart
-│   └── plugins.py              # Discover plugins/ manifests, merge into catalogs
+│   ├── plugins.py              # Discover plugins/ manifests, merge into catalogs
+│   ├── policy.py               # Policy-as-code + multi-tenancy (roles → policy.yaml)
+│   ├── supply_chain.py         # Image inventory + pin classification (digest/version/mutable)
+│   ├── capacity.py             # Heuristic capacity planner (`plan`)
+│   ├── benchmark.py            # TTFT / latency / tokens-per-sec measurement (`benchmark`)
+│   └── evaluate.py             # Golden-dataset eval runner (`eval`)
 │
 ├── catalogs/                   # Data-driven catalogs (no hard-coded logic in code)
 │   ├── serving_engines.yaml    # vLLM, SGLang, TGI, NIM, Ollama, llama.cpp (+ROCm images)

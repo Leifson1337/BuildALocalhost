@@ -124,6 +124,8 @@ def build(
         "AUTHELIA_STORAGE_ENCRYPTION_KEY": _token(32),
         "AUTHENTIK_SECRET_KEY": _token(32),
         "KEYCLOAK_ADMIN_PASSWORD": _token(),
+        "LANGFUSE_NEXTAUTH_SECRET": _token(32),
+        "LANGFUSE_SALT": _token(),
     }
 
     return ResolvedConfig(

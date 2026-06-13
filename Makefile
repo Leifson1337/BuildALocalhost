@@ -7,7 +7,7 @@ SIMULATE ?=
 
 .PHONY: help install preview generate generate-k8s up down logs ps health \
         backup restore update rollback bundle bootstrap-tenants \
-        audit-images scan sbom clean test
+        audit-images scan sbom status eval clean test
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -66,6 +66,12 @@ scan:  ## Scan images for vulnerabilities (Trivy/Grype)
 
 sbom:  ## Generate CycloneDX SBOMs (Syft)
 	./scripts/generate-sbom.sh $(OUTPUT)
+
+status:  ## Admin overview of the generated deployment
+	python -m installer status --output $(OUTPUT)
+
+eval:  ## Run a golden-dataset eval: make eval DATASET=configs/eval/example-golden.yaml
+	python -m installer eval --dataset $(DATASET) --output $(OUTPUT)
 
 clean:  ## Remove generated output (keeps catalogs/profiles/templates)
 	rm -rf $(OUTPUT)

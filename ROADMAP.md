@@ -60,8 +60,8 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Image-/Supply-Chain-Security: Pinning-Audit (`audit-images`) + Scan (Trivy/Grype) + SBOM (Syft)
 - [ ] Signaturprüfung (cosign) + Hash-Pinning automatisch
 - [ ] MIG-Unterstützung, Multi-Node/Cluster, NCCL-Test
-- [ ] Admin-Dashboard
-- [ ] Eval-/Qualitätsmodul (Langfuse, Golden Datasets, Regression)
+- [x] Admin-Überblick: Grafana-Overview-Dashboard + `status`-CLI
+- [x] Eval-/Qualitätsmodul: Golden-Dataset-Runner (`eval`) + Langfuse (optional, enterprise)
 - [ ] K8s-Parität für RAG/MCP/Auth/Monitoring (Compose bereits vollständig)
 - [ ] Plugin-Erweiterungspunkte: model_sources/vector_dbs/auth_providers/deployment_targets
 

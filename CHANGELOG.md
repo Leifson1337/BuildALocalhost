@@ -24,6 +24,14 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
   graceful wenn Tool fehlt; Makefile-Targets `audit-images`/`scan`/`sbom`
 - Smoke-Tests gesamt 25/25
 
+#### Hinzugefügt (Admin-Dashboard + Eval)
+- Grafana-Overview-Dashboard (GPU/LLM/Spend/Container) provisioniert
+- CLI `status` — Admin-Überblick (Services, Modelle, Image-Pinning, Mandanten, `docker compose ps`)
+- `installer/evaluate.py` + CLI `eval` — Golden-Dataset-Runner (contains/equals/regex/not_contains),
+  Pass-Rate + Latenz; Beispiel `configs/eval/example-golden.yaml`
+- Langfuse (optional) als Observability-Service; im `enterprise`-Profil aktiviert
+- Makefile-Targets `status`/`eval`; Smoke-Tests gesamt 27/27
+
 
 #### Hinzugefügt
 - **Multi-Modell-Routing**: `inference.models: [{name, role, model}]` rendert eine Engine je

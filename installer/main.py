@@ -144,6 +144,76 @@ def list_engines() -> None:
                       f"[dim]({eng.get('api')})[/dim]")
 
 
+@app.command("eval")
+def eval_cmd(
+    dataset: Path = typer.Option(..., "--dataset", help="Golden-Dataset (YAML)."),
+    output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", help="Deployment (.env)."),
+    base_url: Optional[str] = typer.Option(None, "--base-url"),
+    api_key: Optional[str] = typer.Option(None, "--api-key"),
+    model: str = typer.Option("main-chat", "--model"),
+) -> None:
+    """Golden-Dataset gegen das Gateway evaluieren (Qualität/Regression)."""
+    import yaml
+    from installer import evaluate
+    if not dataset.exists():
+        console.print(f"[red]Dataset nicht gefunden: {dataset}[/red]")
+        raise typer.Exit(1)
+    if base_url is None or api_key is None:
+        base_url, api_key = _read_endpoint(output, base_url, api_key)
+    data = yaml.safe_load(dataset.read_text(encoding="utf-8"))
+    report = evaluate.run(base_url=base_url, api_key=api_key, dataset=data, default_model=model)
+    console.print(f"\n[bold]Eval[/bold]: {report.passed}/{report.total} bestanden "
+                  f"({report.pass_rate*100:.0f}%), Ø Latenz {report.latency_avg_s}s")
+    for r in report.results:
+        mark = "[green]PASS[/green]" if r.ok else "[red]FAIL[/red]"
+        extra = f" — {r.error}" if r.error else ""
+        console.print(f"  {mark} {r.id} ({r.latency_s:.2f}s){extra}")
+    raise typer.Exit(0 if report.failed == 0 else 1)
+
+
+@app.command("status")
+def status(
+    output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", help="Deployment-Verzeichnis."),
+) -> None:
+    """Admin-Überblick: Services, Modelle, Security, Image-Pinning, Mandanten, Endpunkte."""
+    import yaml
+    from installer import supply_chain
+    compose = output / "docker-compose.yml"
+    if not compose.exists():
+        console.print(f"[red]Keine docker-compose.yml in {output}[/red] — erst generieren.")
+        raise typer.Exit(1)
+    doc = yaml.safe_load(compose.read_text(encoding="utf-8"))
+    console.print(f"\n[bold]Stack:[/bold] {doc.get('name', '?')}")
+    services = list((doc.get("services") or {}).keys())
+    console.print(f"[bold]Services ({len(services)}):[/bold] " + ", ".join(services))
+
+    litellm_cfg = output / "configs" / "litellm" / "config.yaml"
+    if litellm_cfg.exists():
+        lc = yaml.safe_load(litellm_cfg.read_text(encoding="utf-8")) or {}
+        models = [m.get("model_name") for m in lc.get("model_list", [])]
+        console.print(f"[bold]Modelle:[/bold] " + ", ".join(filter(None, models)))
+
+    report = supply_chain.audit(compose)
+    if report["mutable"]:
+        console.print(f"[yellow]Image-Warnung:[/yellow] {len(report['mutable'])} mutable Tag(s) "
+                      "(siehe `audit-images`)")
+    else:
+        console.print("[green]Images: alle gepinnt.[/green]")
+
+    policy = output / "configs" / "policy" / "policy.yaml"
+    if policy.exists():
+        pol = yaml.safe_load(policy.read_text(encoding="utf-8")) or {}
+        tenants = [t.get("id") for t in (pol.get("tenants") or [])]
+        if tenants:
+            console.print(f"[bold]Mandanten:[/bold] " + ", ".join(tenants))
+
+    # Live status if docker is available.
+    import shutil
+    if shutil.which("docker"):
+        console.print("\n[dim]docker compose ps:[/dim]")
+        subprocess.run(["docker", "compose", "ps"], cwd=output, check=False)
+
+
 @app.command("audit-images")
 def audit_images(
     output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", help="Deployment-Verzeichnis."),

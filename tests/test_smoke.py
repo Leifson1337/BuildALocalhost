@@ -343,6 +343,33 @@ def test_supply_chain_audit_on_rendered():
         assert any("open-webui" in m for m in report["mutable"])
 
 
+def test_eval_scoring_pure():
+    from installer.evaluate import score, summarize, CaseResult
+    assert score({"type": "contains", "value": "Hallo"}, "Sage Hallo Welt")
+    assert score({"type": "equals", "value": "4"}, "  4 ")
+    assert score({"type": "regex", "value": r"\b4\b"}, "Antwort: 4.")
+    assert score({"type": "not_contains", "value": "ERROR"}, "alles gut")
+    assert not score({"type": "contains", "value": "x"}, "y")
+    assert not score({"type": "unknown"}, "anything")   # fail closed
+    rep = summarize([CaseResult("a", True, 0.1), CaseResult("b", False, 0.3)])
+    assert rep.total == 2 and rep.passed == 1 and rep.pass_rate == 0.5
+
+
+def test_langfuse_rendered_in_enterprise():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="enterprise", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+        assert "langfuse" in doc["services"]
+        env = (out / ".env").read_text(encoding="utf-8")
+        assert "LANGFUSE_NEXTAUTH_SECRET=" in env
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

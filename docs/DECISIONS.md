@@ -246,6 +246,22 @@ signature verification + automatic digest-pinning are tracked follow-ups.
 
 ---
 
+## ADR-0019 — Admin via Grafana + `status` CLI; eval via golden datasets + Langfuse
+
+**Context:** The spec wants an admin dashboard and an evaluation/quality module.
+
+**Decision:** Rather than a bespoke admin web app, ship (a) a provisioned **Grafana** overview
+dashboard (GPU/LLM/spend/container metrics) on the existing monitoring stack, and (b) a
+**`status`** CLI giving a fast text overview (services, models, image pins, tenants, live
+`docker compose ps`). For quality: a pure, unit-tested **golden-dataset runner**
+(`installer/evaluate.py`, `eval` CLI: contains/equals/regex/not_contains) for regression after
+updates, plus optional **Langfuse** (traces/prompt-mgmt/evals) wired into the enterprise profile.
+
+**Consequences:** Reuses proven tools; no fragile custom UI to maintain. A richer bespoke admin
+panel and Langfuse v3 (clickhouse) remain possible later.
+
+---
+
 ## Open decisions (to be asked, not assumed)
 
 Tracked in `ROADMAP.md` → "Offene Fragen". Will be raised when the relevant stage is reached:
