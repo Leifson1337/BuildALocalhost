@@ -1,0 +1,41 @@
+# Helm values — Profile: {{ profile_name }}. Override with `helm install -f my-values.yaml`.
+namespace: {{ namespace }}
+
+images:
+  engine: {{ engine_image }}
+  litellm: ghcr.io/berriai/litellm:main-stable
+  openWebui: ghcr.io/open-webui/open-webui:main
+  postgres: postgres:16
+  redis: redis:7
+
+inference:
+  gpuResourceKey: {{ gpu_resource_key }}
+  gpuPerPod: {{ gpu_per_pod }}
+  replicasPerModel: 1
+  models:
+{% for m in models %}
+    - name: {{ m.name }}
+      role: {{ m.role }}
+      model: {{ m.model }}
+      port: {{ m.port }}
+{% endfor %}
+
+gateway:
+  replicas: 1
+
+openWebui:
+  enabled: {{ ui_open_webui | lower }}
+
+ingress:
+  enabled: {{ uses_traefik | lower }}
+  className: nginx
+  apiHost: {{ domains.api or "api.example.com" }}
+  webuiHost: {{ domains.webui or "chat.example.com" }}
+
+# Secrets MUST be provided at install time (do not commit real values):
+#   helm install ... --set secrets.litellmMasterKey=... --set secrets.postgresPassword=...
+secrets:
+  postgresPassword: "CHANGE_ME"
+  litellmMasterKey: "sk-CHANGE_ME"
+  webuiSecretKey: "CHANGE_ME"
+  hfToken: ""

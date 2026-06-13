@@ -22,7 +22,9 @@ ai-stack/
 │   ├── preview.py              # Rich preview of the planned deployment
 │   ├── wizard.py               # Interactive selection (modes, engine/model/UI/RAG/MCP/auth)
 │   ├── hf_search.py            # Hugging Face live model search (graceful fallback)
-│   └── compose_renderer.py     # Jinja2 render → output/docker-compose.yml + .env + configs
+│   ├── compose_renderer.py     # Jinja2 render → output/docker-compose.yml + .env + configs
+│   ├── k8s_renderer.py         # Same config → output/k8s/ manifests + Helm chart
+│   └── plugins.py              # Discover plugins/ manifests, merge into catalogs
 │
 ├── catalogs/                   # Data-driven catalogs (no hard-coded logic in code)
 │   ├── serving_engines.yaml    # vLLM, SGLang, TGI, NIM, Ollama, llama.cpp (+ROCm images)
@@ -41,7 +43,11 @@ ai-stack/
 │   ├── rag.yaml                # + Qdrant + embeddings/reranker + AnythingLLM
 │   ├── agents_mcp.yaml         # + MCP gateway (safe read-only servers)
 │   ├── multi_h100.yaml         # multi-GPU tuned (auto tensor/pipeline parallel)
-│   └── enterprise.yaml         # SSO (Authentik) + RAG + MCP + zero-trust
+│   ├── enterprise.yaml         # SSO (Authentik) + RAG + MCP + zero-trust
+│   └── routing.yaml            # multi-model routing (fast/main/code behind one gateway)
+│
+├── plugins/                    # Drop-in extensions (engines/webuis/mcp) — see plugins/README.md
+├── scripts/                    # healthcheck, backup, restore, update, rollback, offline-bundle
 │
 ├── templates/                  # Jinja2 render templates
 │   ├── docker-compose.yml.j2   # Single compose file, services toggled by config

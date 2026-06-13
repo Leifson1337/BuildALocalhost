@@ -90,6 +90,7 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "engine_port": engine.get("default_port", 8000),
         "engine_gpu_required": engine.get("gpu") == "required",
         "engine_command": build_engine_command(cfg, engine),
+        "models": _models_context(cfg, engine),
         "shm_size": "32gb",
         # gateway
         "rate_limits": bool(data.get("gateway", {}).get("rate_limits", False)),
@@ -124,6 +125,30 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         # secrets (rendered into .env only)
         "secrets": cfg.secrets,
     }
+
+
+def _env_var_for(name: str) -> str:
+    """Service name -> .env variable, e.g. 'fast-chat' -> 'MODEL_FAST_CHAT'."""
+    return "MODEL_" + name.upper().replace("-", "_").replace(".", "_")
+
+
+def _models_context(cfg: ResolvedConfig, engine: dict) -> list[dict[str, Any]]:
+    """One entry per served model: service name, env var, command, port."""
+    inf = cfg.data["inference"]
+    port = engine.get("default_port", 8000)
+    out: list[dict[str, Any]] = []
+    for m in inf.get("models", []):
+        env_var = _env_var_for(m["name"])
+        out.append({
+            "name": m["name"],
+            "role": m.get("role", "main"),
+            "service": "inference-" + m["name"],
+            "env_var": env_var,
+            "model": m["model"],
+            "port": port,
+            "command": build_engine_command(cfg, engine, model_env=env_var),
+        })
+    return out
 
 
 def _engine_image(engine: dict, runtime_kind: str) -> str:
@@ -187,20 +212,22 @@ def _mcp_context(cfg: ResolvedConfig) -> dict[str, Any]:
     }
 
 
-def build_engine_command(cfg: ResolvedConfig, engine: dict) -> list[str]:
+def build_engine_command(cfg: ResolvedConfig, engine: dict, model_env: str = "MAIN_MODEL") -> list[str]:
     """Build the container command (list form) for the chosen engine.
 
-    Stage 1 fully supports vLLM (default) with best-effort commands for sglang/tgi.
+    `model_env` is the .env variable holding the model id for this service (multi-model
+    routing renders one service per model, each with its own MODEL_* var).
+    Fully supports vLLM with best-effort commands for sglang/tgi.
     """
     inf = cfg.data["inference"]
     eid = inf["engine"]
     port = engine.get("default_port", 8000)
-    tp = int(inf.get("tensor_parallel_size", 1) or 1)
     pp = int(inf.get("pipeline_parallel_size", 1) or 1)
+    ref = "${" + model_env + "}"
 
     if eid == "vllm":
         cmd = [
-            "--model", "${MAIN_MODEL}",
+            "--model", ref,
             "--host", "0.0.0.0",
             "--port", str(port),
             "--tensor-parallel-size", "${TENSOR_PARALLEL_SIZE}",
@@ -219,7 +246,7 @@ def build_engine_command(cfg: ResolvedConfig, engine: dict) -> list[str]:
     if eid == "sglang":
         return [
             "python3", "-m", "sglang.launch_server",
-            "--model-path", "${MAIN_MODEL}",
+            "--model-path", ref,
             "--host", "0.0.0.0",
             "--port", str(port),
             "--tp", "${TENSOR_PARALLEL_SIZE}",
@@ -228,7 +255,7 @@ def build_engine_command(cfg: ResolvedConfig, engine: dict) -> list[str]:
 
     if eid == "tgi":
         return [
-            "--model-id", "${MAIN_MODEL}",
+            "--model-id", ref,
             "--port", str(port),
             "--num-shard", "${TENSOR_PARALLEL_SIZE}",
             "--max-total-tokens", "${MAX_MODEL_LEN}",
@@ -237,8 +264,8 @@ def build_engine_command(cfg: ResolvedConfig, engine: dict) -> list[str]:
     if eid == "ollama":
         return []  # ollama serves by default; model pulled separately
 
-    # Fallback: assume an OpenAI-compatible server reads MAIN_MODEL.
-    return ["--model", "${MAIN_MODEL}", "--port", str(port)]
+    # Fallback: assume an OpenAI-compatible server reads the model env var.
+    return ["--model", ref, "--port", str(port)]
 
 
 def _write(path: Path, content: str) -> Path:

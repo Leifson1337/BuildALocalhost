@@ -116,7 +116,9 @@ services:
     networks: [internal]
     restart: unless-stopped
 
-  inference:
+{% for m in models %}
+  # Inference engine for model '{{ m.name }}' (role: {{ m.role }})
+  {{ m.service }}:
     image: {{ engine_image }}
     ipc: host
     shm_size: "{{ shm_size }}"
@@ -124,9 +126,9 @@ services:
       HF_TOKEN: ${HF_TOKEN:-}
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
       HF_HOME: /hf-cache
-{% if engine_command %}
+{% if m.command %}
     command:
-{% for arg in engine_command %}
+{% for arg in m.command %}
       - "{{ arg }}"
 {% endfor %}
 {% endif %}
@@ -152,6 +154,8 @@ services:
     cap_add: [SYS_PTRACE]
 {% endif %}
     restart: unless-stopped
+
+{% endfor %}
 
   litellm:
     image: ghcr.io/berriai/litellm:main-stable

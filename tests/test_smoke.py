@@ -154,6 +154,95 @@ def test_socket_proxy_replaces_raw_socket():
         assert "docker-socket-proxy" in text
 
 
+def test_routing_multi_model():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="routing", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+        svcs = doc["services"]
+        for name in ("inference-fast-chat", "inference-main-chat", "inference-code"):
+            assert name in svcs, f"missing {name}"
+        litellm = (out / "configs" / "litellm" / "config.yaml").read_text(encoding="utf-8")
+        for mn in ("fast-chat", "main-chat", "code"):
+            assert f"model_name: {mn}" in litellm
+        env = (out / ".env").read_text(encoding="utf-8")
+        assert "MODEL_FAST_CHAT=" in env and "MODEL_CODE=" in env
+
+
+def test_single_model_backward_compatible():
+    system = build_simulation("4xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    import yaml
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+        assert "inference-main-chat" in doc["services"]
+
+
+def test_k8s_export_multidoc_valid():
+    import yaml
+    from installer import k8s_renderer
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="routing", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        k8s_renderer.render(cfg, out)
+        manifests = out / "k8s" / "manifests.yaml"
+        assert manifests.exists()
+        docs = list(yaml.safe_load_all(manifests.read_text(encoding="utf-8")))
+        kinds = [d.get("kind") for d in docs if d]
+        assert "Namespace" in kinds and "Ingress" in kinds
+        deploy_names = [d["metadata"]["name"] for d in docs
+                        if d and d.get("kind") == "Deployment"]
+        for n in ("inference-fast-chat", "inference-main-chat", "inference-code", "litellm"):
+            assert n in deploy_names, f"missing deployment {n}"
+        # GPU resource present on an inference deployment.
+        text = manifests.read_text(encoding="utf-8")
+        assert "nvidia.com/gpu" in text
+        # Helm chart files exist.
+        assert (out / "k8s" / "helm" / "routing" / "Chart.yaml").exists()
+        assert (out / "k8s" / "helm" / "routing" / "values.yaml").exists()
+
+
+def test_k8s_rocm_resource_key():
+    from installer import k8s_renderer
+    system = build_simulation("8xMI300X")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="production", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        k8s_renderer.render(cfg, out)
+        text = (out / "k8s" / "manifests.yaml").read_text(encoding="utf-8")
+        assert "amd.com/gpu" in text and "nvidia.com/gpu" not in text
+
+
+def test_plugin_loader_skips_disabled():
+    from installer import plugins
+    d = plugins.discover()
+    assert set(d.keys()) == {"engines", "webuis", "mcp_servers"}
+    # The shipped example plugin is disabled => must not appear.
+    assert "aphrodite" not in [e["id"] for e in d["engines"]]
+
+
+def test_catalog_merge_is_safe_without_plugins():
+    from installer import catalog
+    engines = [e["id"] for e in catalog.load_engines().get("engines", [])]
+    assert "vllm" in engines  # built-ins still present after plugin merge
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

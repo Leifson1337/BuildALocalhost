@@ -39,8 +39,8 @@ Dieses Projekt wird **stufenweise und lauffähig** gebaut. Aktueller Stand siehe
 | Stufe | Inhalt | Status |
 |-------|--------|--------|
 | **1** | Funktionierender Kern-Stack + Installer-Grundgerüst + Doku | ✅ fertig |
-| **2** | Auswahl-Wizard, HF-Suche, RAG, MCP, Security-Profile, Auth-Auswahl, AMD ROCm | 🟡 in Arbeit |
-| **3** | Multi-Modell-Routing, Auto-Tuning/Benchmark, Mandantenfähigkeit, Backup/Restore, K8s-Export, Plugin-System | ⚪ geplant |
+| **2** | Auswahl-Wizard, HF-Suche, RAG, MCP, Security-Profile, Auth-Auswahl, AMD ROCm | ✅ fertig |
+| **3** | Multi-Modell-Routing, K8s/Helm-Export, Backup/Restore, Update/Rollback, Offline-Bundle, Plugins | 🟡 in Arbeit |
 
 ---
 

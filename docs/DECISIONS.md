@@ -168,6 +168,50 @@ into Jinja includes/partials. Tracked as a refactor trigger, not done preemptive
 
 ---
 
+## ADR-0014 — Kubernetes/Helm export from the same ResolvedConfig
+
+**Context:** Compose suits single-node; multi-node/production wants Kubernetes. We don't want
+a second source of truth.
+
+**Decision:** `installer/k8s_renderer.py` consumes the **same `ResolvedConfig`** (via
+`compose_renderer.build_context`) and renders (a) plain multi-doc `manifests.yaml` and (b) a
+thin Helm chart. Per-model Deployments+Services mirror the Compose multi-model routing; GPU
+requests use `nvidia.com/gpu` or `amd.com/gpu` by runtime. Exec-form args inline concrete
+values (no shell `${VAR}` expansion in K8s). Helm templates are wrapped in Jinja `{% raw %}`
+so they stay valid Go templates.
+
+**Consequences:** One config → two targets. Stage-3 K8s scope is the core serving path;
+RAG/MCP/auth/monitoring K8s parity is a documented follow-up (already complete on Compose).
+Validated offline by multi-doc YAML parse (no cluster available in dev).
+
+---
+
+## ADR-0015 — Multi-model routing as a first-class profile shape
+
+**Context:** Production wants fast/main/code models behind one endpoint.
+
+**Decision:** `inference.models: [{name, role, model}]` renders one engine service per model;
+LiteLLM exposes each as a distinct `model_name`. A single `model` is normalised to a
+one-entry list, so all earlier profiles/tests keep working. Validators warn that concurrent
+models share VRAM (fatal if the summed floors exceed available VRAM).
+
+**Consequences:** Backward compatible; `routing.yaml` profile demonstrates it.
+
+---
+
+## ADR-0016 — Plugins extend catalogs, never core code
+
+**Context:** "Beliebig erweiterbar" — arbitrary extensibility.
+
+**Decision:** `plugins/<name>/plugin.yaml` manifests contribute extra engines/webuis/mcp
+servers, merged (deduped by id, built-ins win) by `installer/plugins.py`. Malformed/disabled
+plugins are skipped with a note, never a crash.
+
+**Consequences:** New engines/UIs/MCP servers need no code change. More extension kinds
+(model_sources, vector_dbs, auth_providers, …) are planned.
+
+---
+
 ## Open decisions (to be asked, not assumed)
 
 Tracked in `ROADMAP.md` → "Offene Fragen". Will be raised when the relevant stage is reached:

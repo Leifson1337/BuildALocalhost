@@ -19,6 +19,7 @@ python -m installer [OPTIONS]
   --simulate TEXT       Simulate hardware, e.g. "8xH100", "2xRTX4090", "4xB300"
   --goal TEXT           Optimisation goal (see below)              [default: high_throughput_chat]
   --output PATH         Output directory for generated files        [default: ./output]
+  --target TEXT         Deployment target: compose | kubernetes      [default: compose]
   --non-interactive     Skip prompts; use profile + flags only
   --dry-run             Render + preview, but do not start the stack
   --no-validate         Skip pre-flight validation (not recommended)
@@ -104,6 +105,34 @@ docker compose pull
 docker compose up -d
 ../scripts/healthcheck.sh
 ```
+
+## Kubernetes export (`--target kubernetes`)
+
+Generates, in addition to Compose, from the **same** resolved config:
+
+```
+output/k8s/
+├── manifests.yaml                 # plain multi-doc manifests (kubectl apply -f)
+└── helm/<profile>/                # thin Helm chart
+    ├── Chart.yaml
+    ├── values.yaml                # images, models, ingress hosts, gpu key, secrets (CHANGE_ME)
+    └── templates/manifests.yaml
+```
+
+Stage-3 K8s scope is the core serving path (namespace, secret, LiteLLM ConfigMap, Postgres,
+Redis, one Deployment+Service per model with GPU requests, LiteLLM, Open WebUI, Ingress).
+Set real secret values before applying. RAG/MCP/auth/monitoring K8s parity is a follow-up.
+
+## Operations scripts
+
+| Script / make target            | Purpose                                              |
+|---------------------------------|------------------------------------------------------|
+| `scripts/healthcheck.sh` / `make health` | Probe `/v1/models` + chat smoke test       |
+| `scripts/backup.sh` / `make backup`       | Postgres dump + volumes + configs + .env   |
+| `scripts/restore.sh` / `make restore`     | Restore from a backup dir                  |
+| `scripts/update.sh` / `make update`       | Backup → image snapshot → pull → recreate → health-gate |
+| `scripts/rollback.sh` / `make rollback`   | Re-pin previous image snapshot             |
+| `scripts/offline-bundle.sh` / `make bundle` | Air-gapped bundle (docker save/load)     |
 
 ## Validation (pre-flight)
 

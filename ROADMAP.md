@@ -44,22 +44,24 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [ ] End-to-End-Test auf echter Hardware (durch Nutzer; hier nur Simulation)
 - [ ] Authentik/Keycloak Realm-/Flow-Bootstrap-Automatisierung (aktuell manuell)
 
-## Stufe 3 — Produktionsplattform ⚪
+## Stufe 3 — Produktionsplattform 🟡
 
-- [ ] Multi-Modell-Routing (fast/main/code/reasoning/vision/embeddings)
+- [x] Multi-Modell-Routing (fast/main/code…) — `routing.yaml`, eine Engine je Modell hinter LiteLLM
+- [x] Kubernetes-/Helm-Export aus denselben Profilen (`--target kubernetes`)
+- [x] Backup/Restore (Postgres-Dump, Volumes, Configs, .env)
+- [x] Update-/Rollback-System (Backup + Image-Snapshot + Health-Gate + Rollback)
+- [x] Offline/Air-Gapped-Bundle (`docker save`/`load` + Deployment)
+- [x] Plugin-System (engines/webuis/mcp_servers; deny built-in override)
 - [ ] Benchmark- & Auto-Tuning-Modul (tokens/s, TTFT, p50/p95/p99)
 - [ ] Kapazitätsplaner (Nutzer × Prompt-/Antwortlänge → Schätzung)
 - [ ] Rollen-/Rechtesystem + Mandantenfähigkeit
 - [ ] Policy-as-Code (zentrale Policy-Datei)
-- [ ] Backup/Restore (DBs, Vector-DB, Keys, Configs, Dashboards)
-- [ ] Update-/Rollback-System (Versionspins, Canary, Rollback)
-- [ ] Offline/Air-Gapped-Bundle (Images + Modelle vorab)
 - [ ] Image-/Supply-Chain-Security (Scanning, SBOM, Signaturen)
-- [ ] Kubernetes-/Helm-Export aus denselben Profilen
 - [ ] MIG-Unterstützung, Multi-Node/Cluster, NCCL-Test
-- [ ] Plugin-System (engines/webuis/mcp/model_sources/…)
 - [ ] Admin-Dashboard
 - [ ] Eval-/Qualitätsmodul (Langfuse, Golden Datasets, Regression)
+- [ ] K8s-Parität für RAG/MCP/Auth/Monitoring (Compose bereits vollständig)
+- [ ] Plugin-Erweiterungspunkte: model_sources/vector_dbs/auth_providers/deployment_targets
 
 ---
 

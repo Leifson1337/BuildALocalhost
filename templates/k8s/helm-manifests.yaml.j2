@@ -1,0 +1,168 @@
+{% raw %}# Helm template (Go templating). Rendered by `helm template`/`helm install`.
+# Wrapped in {% raw %} at build time so Jinja passes it through verbatim.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-stack-secrets
+  namespace: {{ .Values.namespace }}
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: {{ .Values.secrets.postgresPassword | quote }}
+  LITELLM_MASTER_KEY: {{ .Values.secrets.litellmMasterKey | quote }}
+  WEBUI_SECRET_KEY: {{ .Values.secrets.webuiSecretKey | quote }}
+  HF_TOKEN: {{ .Values.secrets.hfToken | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: {{ .Values.namespace }}
+data:
+  config.yaml: |
+    model_list:
+    {{- range .Values.inference.models }}
+      - model_name: {{ .name }}
+        litellm_params:
+          model: openai/{{ .model }}
+          api_base: http://inference-{{ .name }}:{{ .port }}/v1
+          api_key: "dummy"
+    {{- end }}
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+      database_url: os.environ/DATABASE_URL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: redis, namespace: {{ .Values.namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: redis}}
+  template:
+    metadata: {labels: {app: redis}}
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.images.redis }}
+          args: ["redis-server", "--appendonly", "yes"]
+          ports: [{containerPort: 6379}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: redis, namespace: {{ .Values.namespace }}}
+spec: {selector: {app: redis}, ports: [{port: 6379, targetPort: 6379}]}
+{{- range .Values.inference.models }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-{{ .name }}
+  namespace: {{ $.Values.namespace }}
+  labels: {app: inference-{{ .name }}, role: {{ .role | quote }}}
+spec:
+  replicas: {{ $.Values.inference.replicasPerModel }}
+  selector: {matchLabels: {app: inference-{{ .name }}}}
+  template:
+    metadata: {labels: {app: inference-{{ .name }}}}
+    spec:
+      containers:
+        - name: engine
+          image: {{ $.Values.images.engine }}
+          args: ["--model", "{{ .model }}", "--port", "{{ .port }}", "--host", "0.0.0.0"]
+          env:
+            - name: HF_TOKEN
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: HF_TOKEN}}
+          ports: [{containerPort: {{ .port }}}]
+          resources:
+            limits:
+              {{ $.Values.inference.gpuResourceKey }}: {{ $.Values.inference.gpuPerPod }}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: inference-{{ .name }}, namespace: {{ $.Values.namespace }}}
+spec:
+  selector: {app: inference-{{ .name }}}
+  ports: [{port: {{ .port }}, targetPort: {{ .port }}}]
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: litellm, namespace: {{ .Values.namespace }}}
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector: {matchLabels: {app: litellm}}
+  template:
+    metadata: {labels: {app: litellm}}
+    spec:
+      containers:
+        - name: litellm
+          image: {{ .Values.images.litellm }}
+          args: ["--config", "/app/config.yaml", "--port", "4000"]
+          env:
+            - name: LITELLM_MASTER_KEY
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: LITELLM_MASTER_KEY}}
+          ports: [{containerPort: 4000}]
+          volumeMounts: [{name: config, mountPath: /app/config.yaml, subPath: config.yaml}]
+      volumes:
+        - name: config
+          configMap: {name: litellm-config}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: litellm, namespace: {{ .Values.namespace }}}
+spec: {selector: {app: litellm}, ports: [{port: 4000, targetPort: 4000}]}
+{{- if .Values.openWebui.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: open-webui, namespace: {{ .Values.namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: open-webui}}
+  template:
+    metadata: {labels: {app: open-webui}}
+    spec:
+      containers:
+        - name: open-webui
+          image: {{ .Values.images.openWebui }}
+          env:
+            - {name: OPENAI_API_BASE_URL, value: "http://litellm:4000/v1"}
+            - name: OPENAI_API_KEY
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: LITELLM_MASTER_KEY}}
+          ports: [{containerPort: 8080}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: open-webui, namespace: {{ .Values.namespace }}}
+spec: {selector: {app: open-webui}, ports: [{port: 8080, targetPort: 8080}]}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-stack-ingress
+  namespace: {{ .Values.namespace }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.apiHost | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: litellm, port: {number: 4000}}}
+{{- if .Values.openWebui.enabled }}
+    - host: {{ .Values.ingress.webuiHost | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: open-webui, port: {number: 8080}}}
+{{- end }}
+{{- end }}
+{% endraw %}

@@ -5,7 +5,8 @@ OUTPUT ?= output
 PROFILE ?= production
 SIMULATE ?=
 
-.PHONY: help install preview generate up down logs ps health clean test
+.PHONY: help install preview generate generate-k8s up down logs ps health \
+        backup restore update rollback bundle clean test
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -17,8 +18,11 @@ install:  ## Bootstrap venv + deps and run the wizard
 preview:  ## Dry-run preview (no files written) — set SIMULATE="8xH100" to fake hardware
 	python -m installer --profile $(PROFILE) $(if $(SIMULATE),--simulate "$(SIMULATE)") --dry-run --non-interactive
 
-generate:  ## Generate the deployment into $(OUTPUT)
+generate:  ## Generate the Compose deployment into $(OUTPUT)
 	python -m installer --profile $(PROFILE) $(if $(SIMULATE),--simulate "$(SIMULATE)") --output $(OUTPUT) --non-interactive
+
+generate-k8s:  ## Generate Compose + Kubernetes manifests + Helm chart
+	python -m installer --profile $(PROFILE) $(if $(SIMULATE),--simulate "$(SIMULATE)") --target kubernetes --output $(OUTPUT) --non-interactive
 
 up:  ## Start the generated stack
 	cd $(OUTPUT) && docker compose pull && docker compose up -d
@@ -34,6 +38,21 @@ ps:  ## Show running services
 
 health:  ## Run health checks against the gateway
 	./scripts/healthcheck.sh $(OUTPUT)
+
+backup:  ## Back up DB, volumes, configs and .env
+	./scripts/backup.sh $(OUTPUT) backups
+
+restore:  ## Restore from a backup: make restore BACKUP=backups/<stamp>
+	./scripts/restore.sh $(BACKUP) $(OUTPUT)
+
+update:  ## Safe update: backup, snapshot, pull, recreate, health-check
+	./scripts/update.sh $(OUTPUT)
+
+rollback:  ## Roll back to the previous image snapshot
+	./scripts/rollback.sh $(OUTPUT)
+
+bundle:  ## Build an offline/air-gapped bundle (images + deployment)
+	./scripts/offline-bundle.sh create $(OUTPUT) ai-stack-bundle.tar
 
 clean:  ## Remove generated output (keeps catalogs/profiles/templates)
 	rm -rf $(OUTPUT)

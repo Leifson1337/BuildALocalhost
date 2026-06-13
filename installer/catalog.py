@@ -26,7 +26,9 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=None)
 def load_engines() -> dict[str, Any]:
-    return _load_yaml(CATALOGS_DIR / "serving_engines.yaml")
+    data = _load_yaml(CATALOGS_DIR / "serving_engines.yaml")
+    _merge_plugins(data, "engines", "engines")
+    return data
 
 
 @functools.lru_cache(maxsize=None)
@@ -36,7 +38,9 @@ def load_hardware() -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=None)
 def load_webuis() -> dict[str, Any]:
-    return _load_yaml(CATALOGS_DIR / "webuis.yaml")
+    data = _load_yaml(CATALOGS_DIR / "webuis.yaml")
+    _merge_plugins(data, "webuis", "webuis")
+    return data
 
 
 @functools.lru_cache(maxsize=None)
@@ -61,7 +65,24 @@ def load_rag() -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=None)
 def load_mcp() -> dict[str, Any]:
-    return _load_yaml(CATALOGS_DIR / "mcp_servers.yaml")
+    data = _load_yaml(CATALOGS_DIR / "mcp_servers.yaml")
+    _merge_plugins(data, "servers", "mcp_servers")
+    return data
+
+
+def _merge_plugins(data: dict[str, Any], list_key: str, kind: str) -> None:
+    """Append plugin-contributed entries (deduped by id) into a catalog list."""
+    try:
+        from installer import plugins
+        extra = plugins.discover().get(kind, [])
+    except Exception:
+        return
+    existing = data.setdefault(list_key, [])
+    have = {e.get("id") for e in existing}
+    for entry in extra:
+        if entry.get("id") not in have:
+            existing.append(entry)
+            have.add(entry.get("id"))
 
 
 @functools.lru_cache(maxsize=None)

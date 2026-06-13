@@ -29,6 +29,7 @@ def main(
     goal: str = typer.Option("high_throughput_chat", "--goal", help="Optimierungsziel."),
     model: Optional[str] = typer.Option(None, "--model", help="HF-Modell-ID oder lokaler Pfad."),
     output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", help="Ausgabeverzeichnis."),
+    target: str = typer.Option("compose", "--target", help="Deployment-Ziel: compose | kubernetes."),
     non_interactive: bool = typer.Option(False, "--non-interactive", help="Ohne Rückfragen."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Nur generieren, nicht starten."),
     no_validate: bool = typer.Option(False, "--no-validate", help="Validierung überspringen."),
@@ -111,6 +112,10 @@ def main(
 
     # 8) Render
     written = compose_renderer.render(cfg, output)
+    if target == "kubernetes":
+        from installer import k8s_renderer
+        written += k8s_renderer.render(cfg, output)
+        console.print("[cyan]Kubernetes-Manifeste + Helm-Chart erzeugt (output/k8s/).[/cyan]")
     console.print(f"\n[green]Generiert[/green] ({len(written)} Dateien) in [bold]{output}[/bold]:")
     for p in written:
         console.print(f"  · {p.relative_to(output.parent) if output.parent in p.parents else p}")

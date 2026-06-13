@@ -27,6 +27,7 @@ class Issue:
 def validate(cfg: ResolvedConfig, *, check_ports: bool = True) -> list[Issue]:
     issues: list[Issue] = []
     issues += _check_compatibility(cfg)
+    issues += _check_multimodel(cfg)
     issues += _check_vram(cfg)
     issues += _check_ram(cfg)
     issues += _check_storage(cfg)
@@ -45,6 +46,29 @@ def has_fatal(issues: list[Issue]) -> bool:
 
 
 # --------------------------------------------------------------------------- checks
+
+def _check_multimodel(cfg: ResolvedConfig) -> list[Issue]:
+    """Warn that concurrently-served models share the node's VRAM, and sum their floors."""
+    models = cfg.data.get("inference", {}).get("models", [])
+    if len(models) <= 1:
+        return []
+    total_need = 0.0
+    known = True
+    for m in models:
+        need = _model_min_vram(m.get("model", ""))
+        if need is None:
+            known = False
+        else:
+            total_need += need
+    have = cfg.system.total_vram_gb
+    msg = (f"{len(models)} models served concurrently share {have} GB VRAM. "
+           "Lower gpu_memory_utilization per model or use separate replicas/GPUs.")
+    if known and have > 0 and total_need > have:
+        return [Issue("fatal", "vram.multimodel",
+                      f"Sum of model VRAM floors (~{round(total_need)} GB) exceeds available "
+                      f"{have} GB across {len(models)} concurrent models.")]
+    return [Issue("warning", "vram.multimodel", msg)]
+
 
 def _check_compatibility(cfg: ResolvedConfig) -> list[Issue]:
     """Engine × model-format × runtime × precision feasibility (compatibility.yaml)."""

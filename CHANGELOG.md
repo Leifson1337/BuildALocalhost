@@ -5,6 +5,26 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 
 ## [Unreleased]
 
+### Stufe 3 — Routing, K8s-Export, Betrieb, Plugins (in Arbeit)
+
+#### Hinzugefügt
+- **Multi-Modell-Routing**: `inference.models: [{name, role, model}]` rendert eine Engine je
+  Modell hinter einem LiteLLM-Gateway; Profil `routing.yaml` (fast/main/code). Einzelmodell
+  bleibt rückwärtskompatibel (Normalisierung). VRAM-Warnung bei gleichzeitigen Modellen
+- **Kubernetes/Helm-Export** (`installer/k8s_renderer.py`, `--target kubernetes`): aus
+  derselben ResolvedConfig → `output/k8s/manifests.yaml` (Multi-Doc) + Helm-Chart
+  (Chart.yaml/values.yaml/templates). GPU-Resource `nvidia.com/gpu` bzw. `amd.com/gpu`
+- Betriebs-Skripte: `backup.sh`, `restore.sh`, `update.sh` (Backup+Snapshot+Health-Gate),
+  `rollback.sh`, `offline-bundle.sh` (create/import) + Makefile-Targets
+- **Plugin-System** (`installer/plugins.py`, `plugins/`): Manifeste erweitern Engines/Web-UIs/
+  MCP-Server ohne Core-Änderung; Beispiel-Plugin (deaktiviert); Schema-Doku
+- 4 neue Smoke-Tests (gesamt 17/17); Routing + K8s (cuda/rocm) abgedeckt
+
+#### Geändert
+- `compose_renderer`: pro-Modell-Services + parametrisierte Engine-Commands
+- LiteLLM-Config/`.env`: pro-Modell `model_name` bzw. `MODEL_*`-Variablen
+- ADR-0014..0016 ergänzt (K8s-Export, Multi-Modell, Plugins)
+
 ### Stufe 2 — Auswahl-Wizard, RAG, MCP, Security, AMD
 
 #### Hinzugefügt

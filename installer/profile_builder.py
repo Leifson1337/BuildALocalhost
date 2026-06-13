@@ -74,9 +74,10 @@ def build(
 ) -> ResolvedConfig:
     data = copy.deepcopy(catalog.load_profile(profile_name))
 
-    # 1) resolve the model
+    # 1) resolve the model(s). Supports a single `model` or a `models` routing list.
     resolved_model = model or _default_model(goal)
-    data["inference"]["model"] = resolved_model
+    _normalize_models(data["inference"], resolved_model)
+    resolved_model = data["inference"]["model"]  # primary (first) after normalisation
 
     # 2) fill engine/parallelism/precision from the recommendation where 'auto'
     inf = data["inference"]
@@ -125,6 +126,26 @@ def build(
 
 
 # --------------------------------------------------------------------------- helpers
+
+def _normalize_models(inf: dict, resolved_model: str) -> None:
+    """Normalise inference into a `models` routing list.
+
+    A profile may declare either a single `model` or a `models: [{name, model, role}]` list
+    (multi-model routing). After this call `inf['models']` is always a non-empty list and
+    `inf['model']` is the primary (first) model id.
+    """
+    models = inf.get("models")
+    if models:
+        for m in models:
+            if m.get("model") in (None, "auto"):
+                m["model"] = resolved_model
+            m.setdefault("name", "main-chat")
+            m.setdefault("role", "main")
+    else:
+        models = [{"name": "main-chat", "model": resolved_model, "role": "main"}]
+    inf["models"] = models
+    inf["model"] = models[0]["model"]
+
 
 def _default_model(goal: str) -> str:
     defaults = catalog.load_models().get("defaults", {})

@@ -1,0 +1,21 @@
+# Example plugin (disabled). Set enabled: true to register this engine in the catalog.
+name: example-custom-engine
+type: inference_engine
+enabled: false
+requires:
+  - nvidia_gpu
+  - docker
+provides:
+  engines:
+    - id: aphrodite
+      name: Aphrodite Engine
+      api: openai-compatible
+      image: alpindale/aphrodite-engine:latest
+      default_port: 2242
+      gpu: required
+      supports:
+        tensor_parallel: true
+        quantization: [awq, gptq, fp8]
+      best_for:
+        - high throughput serving
+        - many concurrent users

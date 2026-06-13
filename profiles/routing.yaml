@@ -1,0 +1,67 @@
+# Profile: routing
+# Multi-model routing: several engines behind one LiteLLM gateway, exposed as distinct
+# model names (fast-chat / main-chat / code). Clients pick the model per request; the
+# gateway can also route by latency/cost (Stage 3 router_settings).
+#
+# NOTE: every model is served concurrently and shares the node's GPUs/VRAM. Size the host
+# accordingly — validators warn that concurrent models share VRAM.
+
+profile_name: routing
+description: Multi-Modell-Routing — fast/main/code hinter einem Gateway.
+
+runtime:
+  type: docker_compose
+  nvidia_container_toolkit: true
+
+inference:
+  engine: vllm
+  dtype: bfloat16
+  tensor_parallel_size: auto
+  pipeline_parallel_size: 1
+  gpu_memory_utilization: 0.45        # lower: multiple models co-resident
+  enable_prefix_caching: true
+  max_model_len: auto
+  models:
+    - {name: fast-chat, role: fast, model: Qwen/Qwen2.5-1.5B-Instruct}
+    - {name: main-chat, role: main, model: Qwen/Qwen2.5-7B-Instruct}
+    - {name: code,      role: code, model: Qwen/Qwen2.5-Coder-7B-Instruct}
+
+gateway:
+  type: litellm
+  openai_compatible: true
+  rate_limits: true
+  per_user_keys: true
+  router:
+    routing_strategy: latency-based-routing
+    num_retries: 2
+    timeout: 120
+
+web:
+  reverse_proxy: traefik
+  tls: letsencrypt
+  auth: litellm_keys
+  domains: {api: null, webui: null, grafana: null}
+  ui: [open-webui]
+
+rag:
+  enabled: false
+mcp:
+  enabled: false
+
+monitoring:
+  enabled: true
+  prometheus: true
+  grafana: true
+  dcgm_exporter: true
+  node_exporter: true
+  cadvisor: true
+
+security:
+  profile: public_secure
+  expose_only_reverse_proxy: true
+  internal_networks: true
+  no_direct_gpu_api_exposure: true
+  audit_logs: true
+  rate_limit_per_minute: 120
+  max_context_tokens: 32768
+  max_output_tokens: 4096
