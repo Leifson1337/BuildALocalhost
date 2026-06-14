@@ -570,6 +570,53 @@ def test_k8s_node_selector_and_nccl():
         assert doc["kind"] == "Job"
 
 
+def test_compatibility_matrix_sweep():
+    """Sweep engine x model-format x runtime; the validator's verdict must match the matrix,
+    and every non-fatal combination must render valid compose YAML."""
+    import yaml
+    from installer import catalog
+    engines = [e["id"] for e in catalog.load_engines()["engines"]]
+    # One representative model per inferred kind.
+    models = {
+        "safetensors_default": "Qwen/Qwen2.5-7B-Instruct",
+        "gguf": "bartowski/Qwen2.5-7B-Instruct-GGUF",
+        "awq": "some-org/Qwen2.5-7B-Instruct-AWQ",
+        "gptq": "some-org/Qwen2.5-7B-Instruct-GPTQ",
+    }
+    compat = catalog.load_compatibility()["engine_format_support"]
+    checked = 0
+    for sim, runtime in (("8xH100", "cuda"), ("8xMI300X", "rocm")):
+        system = build_simulation(sim)
+        rec = recommend(system, "high_throughput_chat")
+        for eid in engines:
+            support = compat.get(eid, {})
+            for kind, model_id in models.items():
+                cfg = profile_builder.build(
+                    profile_name="minimal", system=system, recommendation=rec,
+                    model=model_id, goal="high_throughput_chat",
+                    overrides={"inference": {"engine": eid}},
+                )
+                issues = validators.validate(cfg, check_ports=False)
+                codes = {i.code for i in issues if i.severity == "fatal"}
+                fmt_bad = kind in (support.get("not") or [])
+                rt_bad = runtime not in (support.get("runtimes") or ["cuda"])
+                # Validator must flag incompatible format/runtime as fatal.
+                if fmt_bad:
+                    assert "compat.format" in codes, f"{eid}/{kind}/{runtime} should fail format"
+                if rt_bad and runtime == "rocm":
+                    assert "compat.runtime" in codes, f"{eid}/{runtime} should fail runtime"
+                # Compatible combos must render valid YAML.
+                if not fmt_bad and not rt_bad:
+                    assert not validators.has_fatal(issues), \
+                        f"{eid}/{kind}/{runtime} unexpectedly fatal: {codes}"
+                    with tempfile.TemporaryDirectory() as tmp:
+                        out = Path(tmp) / "o"
+                        compose_renderer.render(cfg, out)
+                        yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+                checked += 1
+    assert checked == len(engines) * len(models) * 2
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
