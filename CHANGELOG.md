@@ -175,3 +175,13 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - MCP-Skills werden in den MCP-Katalog gemergt (dedupe); Beispiel-Skills + README;
   CLI `list-skills`; `agents_mcp` zeigt Skills
 - Smoke-Tests gesamt 39/39
+
+### Stufe 3 (Forts.) — Tests, Verifikationsplan & Doku
+
+- Kombinations-Sweep `test_compatibility_matrix_sweep`: 6 Engines x 4 Formate x 2 Runtimes
+  (48 Kombinationen) gegen die Kompatibilitaetsmatrix; Smoke-Tests gesamt 40/40
+- `docs/TESTING.md`: Offline-Suite (Inventar) + On-Hardware-Verifikationsplan
+  (Hardware-Matrix, Kombinationen, Performance-/Betriebs-/Security-Abnahme)
+- `docs/GAPS.md`: ehrliche Liste bekannter Luecken/Limitierungen
+- README vollstaendig neu: erklaert Architektur, Pipeline, Modi, Auswahl, Profile,
+  Performance, RAG, Endpunkte, Skills, Security, Befehle, Tests, Status
