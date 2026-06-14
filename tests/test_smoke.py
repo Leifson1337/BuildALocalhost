@@ -369,6 +369,25 @@ def test_plugin_loader_skips_disabled():
     assert "aphrodite" not in [e["id"] for e in d["engines"]]
 
 
+def test_plugin_extension_points_present():
+    from installer import plugins
+    d = plugins.discover()
+    for kind in ("engines", "webuis", "mcp_servers", "vector_dbs", "auth_providers",
+                 "model_sources", "monitoring", "deployment_targets"):
+        assert kind in d
+
+
+def test_plugin_monitoring_targets_render():
+    # The prometheus template must emit plugin-contributed scrape targets.
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
+    from installer import TEMPLATES_DIR
+    env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), undefined=StrictUndefined,
+                      trim_blocks=True, lstrip_blocks=True)
+    out = env.get_template("prometheus.yml.j2").render(
+        profile_name="x", plugin_scrape_targets=[{"name": "myexp", "target": "myexp:9100"}])
+    assert "myexp" in out and "myexp:9100" in out
+
+
 def test_catalog_merge_is_safe_without_plugins():
     from installer import catalog
     engines = [e["id"] for e in catalog.load_engines().get("engines", [])]

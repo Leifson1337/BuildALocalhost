@@ -24,3 +24,8 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["litellm:4000"]
+{% for t in plugin_scrape_targets %}
+  - job_name: {{ t.name }}            # plugin-contributed target
+    static_configs:
+      - targets: ["{{ t.target }}"]
+{% endfor %}

@@ -249,6 +249,22 @@ def audit_images(
         console.print("\n[green]Alle Images versions-/digest-gepinnt.[/green]")
 
 
+@app.command("list-plugins")
+def list_plugins() -> None:
+    """Entdeckte Plugins (alle Erweiterungspunkte) auflisten."""
+    from installer import plugins
+    d = plugins.discover()
+    total = sum(len(v) for v in d.values())
+    if total == 0:
+        console.print("Keine aktiven Plugins unter plugins/ gefunden.")
+    for kind, items in d.items():
+        if items:
+            console.print(f"[bold]{kind}[/bold]: " +
+                          ", ".join(str(i.get('id', '?')) for i in items))
+    for note in plugins.load_notes:
+        console.print(f"  [yellow]· {note}[/yellow]")
+
+
 @app.command("list-skills")
 def list_skills() -> None:
     """Verfügbare Skills (Agent + MCP) auflisten."""

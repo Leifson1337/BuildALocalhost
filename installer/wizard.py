@@ -196,16 +196,20 @@ def _select_engine(q, rec: Recommendation) -> Optional[str]:
 
 
 def _select_model(q) -> Optional[str]:
-    source = q.select(
-        "Modellquelle?",
-        choices=[
-            {"name": "Kuratierte Liste", "value": "curated"},
-            {"name": "Hugging Face Live-Suche", "value": "hf"},
-            {"name": "Eigene HF-ID eingeben", "value": "custom"},
-            {"name": "Lokaler Pfad", "value": "local"},
-        ],
-        default="curated",
-    ).ask()
+    from installer import plugins
+    choices = [
+        {"name": "Kuratierte Liste", "value": "curated"},
+        {"name": "Hugging Face Live-Suche", "value": "hf"},
+        {"name": "Eigene HF-ID eingeben", "value": "custom"},
+        {"name": "Lokaler Pfad", "value": "local"},
+    ]
+    # Plugin-contributed model sources (each behaves like a custom id prompt).
+    for ms in plugins.contributed_model_sources():
+        if ms.get("id"):
+            choices.append({"name": ms.get("name", ms["id"]) + " (Plugin)", "value": "plugin:" + ms["id"]})
+    source = q.select("Modellquelle?", choices=choices, default="curated").ask()
+    if source and source.startswith("plugin:"):
+        return q.text(f"Modell-ID/Pfad für {source[7:]}:").ask() or None
 
     if source == "curated":
         return _pick_curated(q)

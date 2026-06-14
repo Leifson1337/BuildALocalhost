@@ -38,7 +38,8 @@ def discover() -> dict[str, list[dict[str, Any]]]:
 
     {'engines': [...], 'webuis': [...], 'mcp_servers': [...]}
     """
-    kinds = ("engines", "webuis", "mcp_servers", "vector_dbs", "auth_providers")
+    kinds = ("engines", "webuis", "mcp_servers", "vector_dbs", "auth_providers",
+             "model_sources", "monitoring", "deployment_targets")
     out: dict[str, list[dict[str, Any]]] = {k: [] for k in kinds}
     if not PLUGINS_DIR.exists():
         return out
@@ -73,3 +74,16 @@ def contributed_webuis() -> list[dict[str, Any]]:
 
 def contributed_mcp_servers() -> list[dict[str, Any]]:
     return discover()["mcp_servers"]
+
+
+def contributed_model_sources() -> list[dict[str, Any]]:
+    return discover()["model_sources"]
+
+
+def contributed_monitoring() -> list[dict[str, Any]]:
+    """Extra monitoring targets: [{name, target}] merged into Prometheus scrape config."""
+    return discover()["monitoring"]
+
+
+def contributed_deployment_targets() -> list[dict[str, Any]]:
+    return discover()["deployment_targets"]

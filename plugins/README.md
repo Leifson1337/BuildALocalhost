@@ -50,7 +50,14 @@ disabled plugin is skipped with a note, never a crash.
 
 ## Extension points
 
-The loader handles `engines`, `webuis`, `mcp_servers`, `vector_dbs`, and `auth_providers`.
-Future kinds: `model_sources`, `monitoring`, `deployment_targets`.
+The loader handles all of: `engines`, `webuis`, `mcp_servers`, `vector_dbs`, `auth_providers`,
+`model_sources`, `monitoring`, `deployment_targets`.
+
+- `model_sources` → extra entries in the wizard's "Modellquelle" menu
+  (`[{id, name}]`; chosen → prompts for a model id/path).
+- `monitoring` → extra Prometheus scrape targets (`[{name, target}]`, e.g. `target: myexp:9100`).
+- `deployment_targets` → discovered and listed (`list-plugins`) for custom renderers.
+
+List everything discovered with `python -m installer list-plugins`.
 
 See `installer/plugins.py` for the authoritative behaviour.

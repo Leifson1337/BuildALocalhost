@@ -125,6 +125,7 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         # monitoring + observability
         "monitoring": cfg.monitoring_enabled,
         "observability_langfuse": bool(data.get("observability", {}).get("langfuse", False)),
+        "plugin_scrape_targets": _plugin_scrape_targets(),
         # security
         "security_profile": cfg.security_profile_id,
         "rate_limit_per_minute": sec.get("rate_limit_per_minute", 60),
@@ -210,6 +211,19 @@ def _deployments_context(cfg: ResolvedConfig, engine: dict) -> list[dict[str, An
                 "multi_replica": replicas > 1,
             })
     return out
+
+
+def _plugin_scrape_targets() -> list[dict[str, str]]:
+    """Plugin-contributed Prometheus scrape targets: [{name, target}]."""
+    try:
+        from installer import plugins
+        out = []
+        for m in plugins.contributed_monitoring():
+            if m.get("name") and m.get("target"):
+                out.append({"name": m["name"], "target": m["target"]})
+        return out
+    except Exception:
+        return []
 
 
 def _engine_image(engine: dict, runtime_kind: str) -> str:
