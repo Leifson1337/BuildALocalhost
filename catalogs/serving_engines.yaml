@@ -67,6 +67,48 @@ engines:
       - production text generation
       - tensor parallelism
 
+  - id: triton_vllm
+    name: Triton Inference Server + vLLM backend
+    default: false
+    api: openai-compatible          # via Triton's OpenAI-compatible frontend
+    image: nvcr.io/nvidia/tritonserver:24.10-vllm-python-py3
+    default_port: 9000
+    gpu: required
+    needs_model_repository: true    # like NIM: requires a prepared Triton model repository
+    supports:
+      tensor_parallel: true
+      pipeline_parallel: false
+      continuous_batching: true     # in-flight batching via vLLM
+      quantization: [awq, gptq, fp8]
+      multimodal: true
+    best_for:
+      - enterprises standardised on Triton
+      - mixed model serving on one server
+    notes: >
+      Requires a Triton model repository mounted at /models/model_repository and the OpenAI
+      frontend on the configured port. See docs/INSTALLER.md (Triton/TensorRT-LLM).
+
+  - id: triton_tensorrt_llm
+    name: Triton Inference Server + TensorRT-LLM backend
+    default: false
+    api: openai-compatible
+    image: nvcr.io/nvidia/tritonserver:24.10-trtllm-python-py3
+    default_port: 9000
+    gpu: required
+    needs_model_repository: true
+    supports:
+      tensor_parallel: true
+      pipeline_parallel: true
+      continuous_batching: true
+      quantization: [fp8, fp4, int8]
+      multimodal: false
+    best_for:
+      - maximally optimised NVIDIA inference
+      - FP8/FP4 on Hopper/Blackwell
+    notes: >
+      Requires pre-compiled TensorRT-LLM engines in the model repository (build step is
+      hardware/model specific; the installer cannot auto-build them).
+
   - id: nim
     name: NVIDIA NIM
     default: false
@@ -118,7 +160,7 @@ engines:
 
 # Preference order by GPU class (used by recommend.py as a tie-breaker, not a hard rule).
 preference_by_class:
-  datacenter_high: [vllm, sglang, tgi, nim, ollama, llama_cpp]   # H100/H200/B200/B300
+  datacenter_high: [vllm, sglang, tgi, triton_tensorrt_llm, triton_vllm, nim, ollama, llama_cpp]  # H100/H200/B200/B300
   datacenter_mid:  [vllm, sglang, tgi, ollama, llama_cpp]        # A100/A40
   consumer:        [vllm, ollama, llama_cpp, sglang]             # RTX 4090/3090
   accelerator:     [vllm, sglang, tgi, llama_cpp]                # AMD MI300X/MI325X (ROCm)

@@ -32,6 +32,7 @@ def validate(cfg: ResolvedConfig, *, check_ports: bool = True) -> list[Issue]:
     issues += _check_ram(cfg)
     issues += _check_storage(cfg)
     issues += _check_docker_gpu(cfg)
+    issues += _check_model_repository(cfg)
     issues += _check_hf_token(cfg)
     issues += _check_license(cfg)
     issues += _check_mcp(cfg)
@@ -169,6 +170,17 @@ def _check_storage(cfg: ResolvedConfig) -> list[Issue]:
     if free < 300:
         return [Issue("warning", "storage.low",
                       f"{free} GB free; large models may not fit. 500 GB+ recommended.")]
+    return []
+
+
+def _check_model_repository(cfg: ResolvedConfig) -> list[Issue]:
+    """Triton/NIM-style engines need a prepared model repository / per-model image."""
+    engine = catalog.get_engine(cfg.engine) or {}
+    if engine.get("needs_model_repository"):
+        return [Issue("info", "engine.model_repository",
+                      f"Engine '{cfg.engine}' needs a prepared Triton model repository at "
+                      "/models/model_repository (TensorRT-LLM engines must be pre-compiled). "
+                      "Mount it before starting.")]
     return []
 
 

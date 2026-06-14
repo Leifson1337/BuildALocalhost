@@ -381,6 +381,12 @@ def build_engine_command(cfg: ResolvedConfig, engine: dict, model_env: str = "MA
             "--max-total-tokens", "${MAX_MODEL_LEN}",
         ]
 
+    if eid in ("triton_vllm", "triton_tensorrt_llm"):
+        # Triton serves from a prepared model repository (mounted at /models/model_repository).
+        # The OpenAI-compatible frontend exposes /v1 on the configured port.
+        return ["tritonserver", "--model-repository=/models/model_repository",
+                f"--http-port={port}"]
+
     if eid == "ollama":
         return []  # ollama serves by default; model pulled separately
 

@@ -20,6 +20,18 @@ engine_format_support:
     not: [gguf]
     runtimes: [cuda, rocm]
     multi_gpu: true
+  triton_vllm:
+    formats: [safetensors_default, awq, gptq, fp8]
+    not: [gguf]
+    runtimes: [cuda]
+    multi_gpu: true
+    notes: Needs a Triton model repository; OpenAI frontend.
+  triton_tensorrt_llm:
+    formats: [safetensors_default, fp8, fp4]
+    not: [gguf, awq, gptq]
+    runtimes: [cuda]
+    multi_gpu: true
+    notes: Needs pre-compiled TensorRT-LLM engines.
   nim:
     formats: [safetensors_default, fp8, fp4]
     runtimes: [cuda]

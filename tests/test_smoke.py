@@ -570,6 +570,28 @@ def test_k8s_node_selector_and_nccl():
         assert doc["kind"] == "Job"
 
 
+def test_triton_engines_selectable():
+    import yaml
+    from installer import catalog
+    ids = [e["id"] for e in catalog.load_engines()["engines"]]
+    assert "triton_vllm" in ids and "triton_tensorrt_llm" in ids
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    # safetensors model on Triton+TRT-LLM (cuda) renders; model-repo note is info, not fatal.
+    cfg = profile_builder.build(profile_name="production", system=system, recommendation=rec,
+                                goal="high_throughput_chat",
+                                overrides={"inference": {"engine": "triton_tensorrt_llm"}})
+    issues = validators.validate(cfg, check_ports=False)
+    assert any(i.code == "engine.model_repository" for i in issues)
+    assert not validators.has_fatal(issues)
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+        svc = next(k for k in doc["services"] if k.startswith("inference-main-chat"))
+        assert "tritonserver" in doc["services"][svc]["command"]
+
+
 def test_compatibility_matrix_sweep():
     """Sweep engine x model-format x runtime; the validator's verdict must match the matrix,
     and every non-fatal combination must render valid compose YAML."""
