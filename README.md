@@ -93,16 +93,24 @@ ai-stack/
 
 ```bash
 python -m installer --simulate "8xH100" --profile production   # generieren (Wizard/non-interactive)
+python -m installer --optimize throughput --profile production # max. parallele Nutzer (Replicas)
+python -m installer --profile rag_efficient                    # LEANN + TurboQuant RAG
 python -m installer --target kubernetes --profile enterprise   # + K8s-Manifeste + Helm-Chart
 python -m installer plan --simulate "4xH100" --users 50        # Kapazität schätzen
 python -m installer status   --output output                  # Admin-Überblick
 python -m installer audit-images --output output              # Image-Pinning prüfen
 python -m installer benchmark --output output --autotune      # TTFT/Latenz/tokens-s messen
 python -m installer eval --dataset configs/eval/example-golden.yaml   # Qualität/Regression
+python -m installer list-endpoints      # Provider-Presets (jeden Endpunkt anbinden)
+python -m installer list-skills         # Agent- + MCP-Skills
 ```
 
 Betrieb über `make`: `backup`, `restore`, `update`, `rollback`, `bundle`,
 `bootstrap-tenants`, `scan`, `sbom`, `pin`, `verify-sigs`, `nccl-test`, `health`.
+
+**Erweitern:** eigene Engines/UIs/Vector-DBs/Auth über `plugins/`, eigene Fähigkeiten über
+`skills/` (Agent- + MCP-Skills), beliebige OpenAI-kompatible Endpunkte über `endpoints:` —
+alles datengetrieben, ohne Core-Änderung.
 
 ## Dokumentation
 

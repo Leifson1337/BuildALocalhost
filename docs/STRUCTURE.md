@@ -25,8 +25,10 @@ ai-stack/
 │   ├── compose_renderer.py     # Jinja2 render → output/docker-compose.yml + .env + configs
 │   ├── k8s_renderer.py         # Same config → output/k8s/ manifests + Helm chart
 │   ├── plugins.py              # Discover plugins/ manifests, merge into catalogs
+│   ├── skills.py               # Discover skills/ (agent + MCP-tool skills)
+│   ├── tuning.py               # Throughput auto-optimizer (replicas/TP/KV/batching)
 │   ├── policy.py               # Policy-as-code + multi-tenancy (roles → policy.yaml)
-│   ├── supply_chain.py         # Image inventory + pin classification (digest/version/mutable)
+│   ├── supply_chain.py         # Image inventory + pin classification + digest pinning
 │   ├── capacity.py             # Heuristic capacity planner (`plan`)
 │   ├── benchmark.py            # TTFT / latency / tokens-per-sec measurement (`benchmark`)
 │   └── evaluate.py             # Golden-dataset eval runner (`eval`)
@@ -48,11 +50,15 @@ ai-stack/
 │   ├── rag.yaml                # + Qdrant + embeddings/reranker + AnythingLLM
 │   ├── agents_mcp.yaml         # + MCP gateway (safe read-only servers)
 │   ├── multi_h100.yaml         # multi-GPU tuned (auto tensor/pipeline parallel)
-│   ├── enterprise.yaml         # SSO (Authentik) + RAG + MCP + zero-trust
-│   └── routing.yaml            # multi-model routing (fast/main/code behind one gateway)
+│   ├── enterprise.yaml         # SSO (Authentik) + RAG + MCP + Langfuse + zero-trust
+│   ├── routing.yaml            # multi-model routing (fast/main/code behind one gateway)
+│   ├── multi_tenant.yaml       # routing + tenants (teams/keys/budgets/RAG collections)
+│   └── rag_efficient.yaml      # LEANN + TurboQuant + reranker + hybrid (efficient RAG)
 │
-├── plugins/                    # Drop-in extensions (engines/webuis/mcp) — see plugins/README.md
-├── scripts/                    # healthcheck, backup, restore, update, rollback, offline-bundle
+├── plugins/                    # Drop-in extensions (engines/webuis/mcp/vector_dbs/auth)
+├── skills/                     # Agent + MCP-tool skills — see skills/README.md
+├── scripts/                    # health, backup, restore, update, rollback, offline-bundle,
+│                               #   scan, sbom, pin, verify-signatures, nccl-test, bootstrap-tenants
 │
 ├── templates/                  # Jinja2 render templates
 │   ├── docker-compose.yml.j2   # Single compose file, services toggled by config

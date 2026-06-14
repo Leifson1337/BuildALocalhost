@@ -11,7 +11,13 @@
 | `python -m installer --help`         | Show all CLI options                               |
 | `python -m installer plan ...`       | Capacity estimate (heuristic) before deploying     |
 | `python -m installer benchmark ...`  | Measure TTFT / latency p50/p95/p99 / tokens-per-sec |
+| `python -m installer status ...`     | Admin overview of a generated deployment           |
+| `python -m installer eval ...`       | Golden-dataset quality/regression run              |
+| `python -m installer audit-images`   | Image inventory + pin status (supply-chain)        |
 | `python -m installer list-profiles`  | List available profiles                            |
+| `python -m installer list-engines`   | List serving engines                               |
+| `python -m installer list-endpoints` | List endpoint presets + gateway endpoints          |
+| `python -m installer list-skills`    | List available agent/MCP skills                    |
 
 ## CLI options (Stage 1)
 
@@ -23,6 +29,7 @@ python -m installer [OPTIONS]
   --goal TEXT           Optimisation goal (see below)              [default: high_throughput_chat]
   --output PATH         Output directory for generated files        [default: ./output]
   --target TEXT         Deployment target: compose | kubernetes      [default: compose]
+  --optimize TEXT       Serving optimisation: throughput|latency|balanced  [default: balanced]
   --non-interactive     Skip prompts; use profile + flags only
   --dry-run             Render + preview, but do not start the stack
   --no-validate         Skip pre-flight validation (not recommended)
