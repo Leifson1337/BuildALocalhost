@@ -7,15 +7,14 @@ requires:
   - docker
 provides:
   engines:
-    - id: aphrodite
-      name: Aphrodite Engine
+    - id: my-custom-engine
+      name: My Custom OpenAI-compatible Engine
       api: openai-compatible
-      image: alpindale/aphrodite-engine:latest
-      default_port: 2242
+      image: registry.example.com/my-engine:1.0
+      default_port: 8000
       gpu: required
       supports:
         tensor_parallel: true
         quantization: [awq, gptq, fp8]
       best_for:
-        - high throughput serving
-        - many concurrent users
+        - example only — replace with your engine

@@ -403,6 +403,18 @@ def build_engine_command(cfg: ResolvedConfig, engine: dict, model_env: str = "MA
             "--max-total-tokens", "${MAX_MODEL_LEN}",
         ]
 
+    if eid == "aphrodite":
+        # Aphrodite's OpenAI server uses vLLM-style flags.
+        return ["--model", ref, "--host", "0.0.0.0", "--port", str(port),
+                "--tensor-parallel-size", "${TENSOR_PARALLEL_SIZE}",
+                "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}",
+                "--max-model-len", "${MAX_MODEL_LEN}"]
+
+    if eid == "lmdeploy":
+        return ["lmdeploy", "serve", "api_server", ref,
+                "--server-name", "0.0.0.0", "--server-port", str(port),
+                "--tp", "${TENSOR_PARALLEL_SIZE}"]
+
     if eid in ("triton_vllm", "triton_tensorrt_llm"):
         # Triton serves from a prepared model repository (mounted at /models/model_repository).
         # The OpenAI-compatible frontend exposes /v1 on the configured port.

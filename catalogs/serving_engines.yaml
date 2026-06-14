@@ -127,6 +127,41 @@ engines:
     notes: >
       Requires NGC API key and per-model images; resolved interactively in Stage 2.
 
+  - id: aphrodite
+    name: Aphrodite Engine
+    default: false
+    api: openai-compatible
+    image: alpindale/aphrodite-openai:latest
+    default_port: 2242
+    gpu: required
+    supports:
+      tensor_parallel: true
+      pipeline_parallel: false
+      prefix_caching: true
+      continuous_batching: true
+      quantization: [awq, gptq, fp8, gguf, exl2, gptq_marlin]
+      multimodal: true
+    best_for:
+      - high throughput with many quantization formats
+      - broad model/format support
+
+  - id: lmdeploy
+    name: LMDeploy (TurboMind)
+    default: false
+    api: openai-compatible
+    image: openmmlab/lmdeploy:latest
+    default_port: 23333
+    gpu: required
+    supports:
+      tensor_parallel: true
+      pipeline_parallel: false
+      continuous_batching: true
+      quantization: [awq, w4a16]
+      multimodal: true
+    best_for:
+      - low-latency TurboMind serving
+      - quantized (AWQ/W4A16) throughput
+
   - id: ollama
     name: Ollama
     default: false
@@ -160,8 +195,8 @@ engines:
 
 # Preference order by GPU class (used by recommend.py as a tie-breaker, not a hard rule).
 preference_by_class:
-  datacenter_high: [vllm, sglang, tgi, triton_tensorrt_llm, triton_vllm, nim, ollama, llama_cpp]  # H100/H200/B200/B300
-  datacenter_mid:  [vllm, sglang, tgi, ollama, llama_cpp]        # A100/A40
-  consumer:        [vllm, ollama, llama_cpp, sglang]             # RTX 4090/3090
+  datacenter_high: [vllm, sglang, tgi, triton_tensorrt_llm, triton_vllm, lmdeploy, aphrodite, nim, ollama, llama_cpp]  # H100/H200/B200/B300
+  datacenter_mid:  [vllm, sglang, tgi, lmdeploy, aphrodite, ollama, llama_cpp]   # A100/A40
+  consumer:        [vllm, aphrodite, ollama, llama_cpp, sglang]  # RTX 4090/3090
   accelerator:     [vllm, sglang, tgi, llama_cpp]                # AMD MI300X/MI325X (ROCm)
   cpu_only:        [llama_cpp, ollama]

@@ -37,6 +37,15 @@ engine_format_support:
     runtimes: [cuda]
     multi_gpu: true
     notes: Per-model NIM images; not arbitrary HF ids.
+  aphrodite:
+    formats: [safetensors_default, awq, gptq, fp8, gguf]
+    runtimes: [cuda]
+    multi_gpu: true
+  lmdeploy:
+    formats: [safetensors_default, awq]
+    not: [gguf, gptq]
+    runtimes: [cuda]
+    multi_gpu: true
   ollama:
     formats: [gguf]
     not: [safetensors_default, awq, gptq, fp8]

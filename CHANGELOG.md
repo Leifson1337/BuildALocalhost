@@ -195,3 +195,10 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - IdP-Gruppen-RBAC: `group_role_map` (Default + Profil-Override) in policy.yaml +
   Authelia-Regeln; Validator prueft unbekannte Rollen
 - ADR-0021; Smoke-Tests gesamt 47/47; alle 9 Profile valide (compose + k8s)
+
+### Stufe 3 (Forts.) — Aphrodite + LMDeploy Engines
+
+- Aphrodite (viele Quant-Formate inkl. GGUF) + LMDeploy/TurboMind als waehlbare Engines
+- Kompatibilitaetsmatrix + Commands; Sweep deckt jetzt 10 Engines x 4 x 2 = 80 Kombis
+- Beispiel-Plugin auf fiktive ID umgestellt (Aphrodite ist jetzt built-in)
+- Smoke-Tests gesamt 48/48

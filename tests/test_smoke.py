@@ -659,6 +659,29 @@ def test_k8s_node_selector_and_nccl():
         assert doc["kind"] == "Job"
 
 
+def test_aphrodite_lmdeploy_selectable():
+    import yaml
+    from installer import catalog
+    ids = [e["id"] for e in catalog.load_engines()["engines"]]
+    assert "aphrodite" in ids and "lmdeploy" in ids
+    system = build_simulation("4xH100")
+    rec = recommend(system, "high_throughput_chat")
+    for eid, marker in (("aphrodite", "--model"), ("lmdeploy", "lmdeploy")):
+        cfg = profile_builder.build(profile_name="production", system=system, recommendation=rec,
+                                    goal="high_throughput_chat",
+                                    overrides={"inference": {"engine": eid}})
+        issues = validators.validate(cfg, check_ports=False)
+        assert not validators.has_fatal(issues), [i.message for i in issues if i.severity == "fatal"]
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "o"
+            compose_renderer.render(cfg, out)
+            doc = yaml.safe_load((out / "docker-compose.yml").read_text(encoding="utf-8"))
+            svc = next(k for k in doc["services"] if k.startswith("inference-main-chat"))
+            assert any(marker in str(a) for a in doc["services"][svc]["command"])
+    # aphrodite accepts gguf; lmdeploy does not.
+    assert catalog.infer_model_kind("x-GGUF") == "gguf"
+
+
 def test_triton_engines_selectable():
     import yaml
     from installer import catalog
