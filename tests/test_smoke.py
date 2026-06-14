@@ -542,6 +542,35 @@ def test_k8s_parity_enterprise():
         assert ("DaemonSet", "dcgm-exporter") in names
 
 
+def test_k8s_auth_parity():
+    import yaml
+    from installer import k8s_renderer
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    # enterprise uses Authentik.
+    cfg = profile_builder.build(profile_name="enterprise", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        k8s_renderer.render(cfg, out)
+        text = (out / "k8s" / "manifests.yaml").read_text(encoding="utf-8")
+        docs = [d for d in yaml.safe_load_all(text) if d]
+        deploys = {d["metadata"]["name"] for d in docs if d.get("kind") == "Deployment"}
+        assert {"authentik-server", "authentik-worker"} <= deploys
+        assert "AUTHENTIK_SECRET_KEY" in text
+    # Keycloak via override.
+    cfg2 = profile_builder.build(profile_name="production", system=system, recommendation=rec,
+                                 goal="high_throughput_chat", overrides={"web": {"auth": "keycloak"}})
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg2, out)
+        k8s_renderer.render(cfg2, out)
+        docs = [d for d in yaml.safe_load_all((out / "k8s" / "manifests.yaml").read_text(encoding="utf-8")) if d]
+        deploys = {d["metadata"]["name"] for d in docs if d.get("kind") == "Deployment"}
+        assert "keycloak" in deploys
+
+
 def test_mig_capability_detected_h100():
     system = build_simulation("8xH100")
     assert system.mig_capable is True

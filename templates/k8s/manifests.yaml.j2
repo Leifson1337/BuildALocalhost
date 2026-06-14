@@ -20,6 +20,17 @@ stringData:
   LITELLM_MASTER_KEY: "sk-CHANGE_ME"
   WEBUI_SECRET_KEY: "CHANGE_ME"
   HF_TOKEN: ""
+{% if auth.id == "authelia" %}
+  AUTHELIA_JWT_SECRET: "CHANGE_ME"
+  AUTHELIA_SESSION_SECRET: "CHANGE_ME"
+  AUTHELIA_STORAGE_ENCRYPTION_KEY: "CHANGE_ME_32_CHARS_MINIMUM______"
+{% endif %}
+{% if auth.id == "authentik" %}
+  AUTHENTIK_SECRET_KEY: "CHANGE_ME"
+{% endif %}
+{% if auth.id == "keycloak" %}
+  KEYCLOAK_ADMIN_PASSWORD: "CHANGE_ME"
+{% endif %}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -429,4 +440,122 @@ kind: Service
 metadata: {name: dcgm-exporter, namespace: {{ namespace }}}
 spec: {selector: {app: dcgm-exporter}, ports: [{port: 9400, targetPort: 9400}]}
 {% endif %}
+{% endif %}
+{% if auth.service and auth.id == "authentik" %}
+# ---- Auth parity: Authentik (server + worker) ----
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: authentik-server, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: authentik-server}}
+  template:
+    metadata: {labels: {app: authentik-server}}
+    spec:
+      containers:
+        - name: server
+          image: {{ auth.image }}
+          args: ["server"]
+          env:
+            - {name: AUTHENTIK_POSTGRESQL__HOST, value: postgres}
+            - {name: AUTHENTIK_POSTGRESQL__USER, value: ai_stack}
+            - {name: AUTHENTIK_POSTGRESQL__NAME, value: ai_stack}
+            - {name: AUTHENTIK_REDIS__HOST, value: redis}
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: POSTGRES_PASSWORD}}
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: AUTHENTIK_SECRET_KEY}}
+          ports: [{containerPort: {{ auth.port }}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: authentik, namespace: {{ namespace }}}
+spec: {selector: {app: authentik-server}, ports: [{port: {{ auth.port }}, targetPort: {{ auth.port }}}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: authentik-worker, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: authentik-worker}}
+  template:
+    metadata: {labels: {app: authentik-worker}}
+    spec:
+      containers:
+        - name: worker
+          image: {{ auth.image }}
+          args: ["worker"]
+          env:
+            - {name: AUTHENTIK_POSTGRESQL__HOST, value: postgres}
+            - {name: AUTHENTIK_POSTGRESQL__USER, value: ai_stack}
+            - {name: AUTHENTIK_POSTGRESQL__NAME, value: ai_stack}
+            - {name: AUTHENTIK_REDIS__HOST, value: redis}
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: POSTGRES_PASSWORD}}
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: AUTHENTIK_SECRET_KEY}}
+{% endif %}
+{% if auth.service and auth.id == "keycloak" %}
+# ---- Auth parity: Keycloak ----
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: keycloak, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: keycloak}}
+  template:
+    metadata: {labels: {app: keycloak}}
+    spec:
+      containers:
+        - name: keycloak
+          image: {{ auth.image }}
+          args: ["start"]
+          env:
+            - {name: KC_DB, value: postgres}
+            - {name: KC_DB_URL, value: "jdbc:postgresql://postgres:5432/ai_stack"}
+            - {name: KC_DB_USERNAME, value: ai_stack}
+            - {name: KC_PROXY_HEADERS, value: xforwarded}
+            - {name: KC_HTTP_ENABLED, value: "true"}
+            - {name: KEYCLOAK_ADMIN, value: admin}
+            - name: KC_DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: POSTGRES_PASSWORD}}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: KEYCLOAK_ADMIN_PASSWORD}}
+          ports: [{containerPort: {{ auth.port }}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: keycloak, namespace: {{ namespace }}}
+spec: {selector: {app: keycloak}, ports: [{port: {{ auth.port }}, targetPort: {{ auth.port }}}]}
+{% endif %}
+{% if auth.service and auth.id == "authelia" %}
+# ---- Auth parity: Authelia ----
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: authelia, namespace: {{ namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: authelia}}
+  template:
+    metadata: {labels: {app: authelia}}
+    spec:
+      containers:
+        - name: authelia
+          image: {{ auth.image }}
+          env:
+            - name: AUTHELIA_JWT_SECRET
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: AUTHELIA_JWT_SECRET}}
+            - name: AUTHELIA_SESSION_SECRET
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: AUTHELIA_SESSION_SECRET}}
+            - name: AUTHELIA_STORAGE_ENCRYPTION_KEY
+              valueFrom: {secretKeyRef: {name: ai-stack-secrets, key: AUTHELIA_STORAGE_ENCRYPTION_KEY}}
+          ports: [{containerPort: {{ auth.port }}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: authelia, namespace: {{ namespace }}}
+spec: {selector: {app: authelia}, ports: [{port: {{ auth.port }}, targetPort: {{ auth.port }}}]}
 {% endif %}
