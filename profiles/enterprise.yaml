@@ -62,6 +62,13 @@ monitoring:
 observability:
   langfuse: true            # traces / prompt management / evals
 
+# RBAC: map your IdP (Authentik) groups to roles. Extends the catalog defaults.
+rbac:
+  group_role_map:
+    acme-engineering: power_user
+    acme-support: user
+    acme-security: auditor
+
 security:
   profile: enterprise_zero_trust
   expose_only_reverse_proxy: true

@@ -132,6 +132,7 @@ def build_context(cfg: ResolvedConfig) -> dict[str, Any]:
         "docker_socket_proxy": bool(sec_prof.get("docker_socket_proxy", False)),
         # auth / rag / mcp blocks
         "auth": _auth_context(cfg),
+        "rbac_group_role_map": _rbac_group_role_map(cfg),
         "rag": _rag_context(cfg),
         "mcp": _mcp_context(cfg),
         "endpoints": _endpoints_context(cfg),
@@ -230,6 +231,13 @@ def _engine_image(engine: dict, runtime_kind: str) -> str:
     if runtime_kind == "rocm" and engine.get("image_rocm"):
         return engine["image_rocm"]
     return engine.get("image", "vllm/vllm-openai:latest")
+
+
+def _rbac_group_role_map(cfg: ResolvedConfig) -> dict[str, str]:
+    """IdP group -> role map: catalog default merged with profile `rbac.group_role_map`."""
+    out = dict(catalog.load_roles().get("group_role_map", {}))
+    out.update(cfg.data.get("rbac", {}).get("group_role_map", {}) or {})
+    return out
 
 
 def _auth_context(cfg: ResolvedConfig) -> dict[str, Any]:

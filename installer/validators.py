@@ -294,8 +294,8 @@ def _check_supply_chain(cfg: ResolvedConfig) -> list[Issue]:
 
 
 def _check_policy(cfg: ResolvedConfig) -> list[Issue]:
-    """Validate tenant role/model references against served models + known roles."""
-    if not cfg.tenancy_enabled:
+    """Validate tenant + RBAC group-role references against served models + known roles."""
+    if not cfg.policy_enabled:
         return []
     from installer import policy as policy_mod
     problems = policy_mod.validate_policy(cfg)

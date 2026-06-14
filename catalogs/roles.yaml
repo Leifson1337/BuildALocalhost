@@ -35,6 +35,17 @@ default_policy:
   deny_mcp_tools: [shell, docker, kubernetes_write, database_write]
   require_approval_for: [external_http, file_write, email_send, db_write]
 
+# IdP group -> role mapping (RBAC). The auth provider (Authentik/Keycloak/Authelia) returns
+# the user's groups; the gateway/forward-auth maps them to a role via this table. Profiles can
+# override under `rbac: {group_role_map: {...}}`.
+group_role_map:
+  ai-admins: admin
+  ai-power-users: power_user
+  ai-users: user
+  ai-rag-admins: rag_admin
+  ai-mcp-admins: mcp_admin
+  ai-auditors: auditor
+
 # Rights that grant access to model roles (used to expand allow_models per tenant role).
 model_rights:
   use_all_models: ["*"]

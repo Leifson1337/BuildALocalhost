@@ -31,12 +31,17 @@ def build_policy(cfg: ResolvedConfig) -> dict[str, Any]:
     tenants_in = cfg.data.get("tenancy", {}).get("tenants", []) or []
     tenants_out = [_expand_tenant(t, served, default) for t in tenants_in]
 
+    # RBAC: IdP group -> role map (catalog default + profile override).
+    group_role_map = dict(roles_cat.get("group_role_map", {}))
+    group_role_map.update(cfg.data.get("rbac", {}).get("group_role_map", {}) or {})
+
     return {
         "default": default,
         "roles": roles_cat.get("roles", []),
         "served_models": served,
         "tenants": tenants_out,
         "multi_tenant": bool(cfg.data.get("tenancy", {}).get("enabled", False)),
+        "group_role_map": group_role_map,
     }
 
 
@@ -84,4 +89,7 @@ def validate_policy(cfg: ResolvedConfig) -> list[str]:
         for m in t["allow_models"]:
             if m not in served and m != "*":
                 problems.append(f"Tenant '{t['id']}' allows model '{m}' which is not served.")
+    for group, role in (pol.get("group_role_map") or {}).items():
+        if role not in valid_roles:
+            problems.append(f"RBAC group '{group}' maps to unknown role '{role}'.")
     return problems

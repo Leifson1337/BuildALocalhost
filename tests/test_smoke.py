@@ -421,6 +421,47 @@ def test_benchmark_percentiles_pure():
     assert percentiles([]) == {50: 0.0, 95: 0.0, 99: 0.0}
 
 
+def test_idp_group_rbac_in_policy():
+    import yaml
+    from installer import policy as policy_mod
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="enterprise", system=system,
+                                recommendation=rec, goal="high_throughput_chat")
+    pol = policy_mod.build_policy(cfg)
+    grm = pol["group_role_map"]
+    assert grm["ai-admins"] == "admin"                 # catalog default
+    assert grm["acme-engineering"] == "power_user"     # profile override
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        polfile = yaml.safe_load((out / "configs" / "policy" / "policy.yaml").read_text(encoding="utf-8"))
+        assert polfile["group_role_map"]["acme-security"] == "auditor"
+
+
+def test_idp_rbac_rejects_unknown_role():
+    system = build_simulation("4xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="enterprise", system=system, recommendation=rec,
+                                goal="high_throughput_chat",
+                                overrides={"rbac": {"group_role_map": {"bad-group": "nope"}}})
+    issues = validators.validate(cfg, check_ports=False)
+    assert any(i.code == "policy.tenant" and "bad-group" in i.message for i in issues)
+
+
+def test_authelia_renders_group_rules():
+    import yaml
+    system = build_simulation("8xH100")
+    rec = recommend(system, "high_throughput_chat")
+    cfg = profile_builder.build(profile_name="enterprise", system=system, recommendation=rec,
+                                goal="high_throughput_chat", overrides={"web": {"auth": "authelia"}})
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "o"
+        compose_renderer.render(cfg, out)
+        ac = (out / "configs" / "authelia" / "configuration.yml").read_text(encoding="utf-8")
+        assert "group:acme-engineering" in ac
+
+
 def test_multi_tenant_policy_render():
     import yaml
     from installer import policy as policy_mod

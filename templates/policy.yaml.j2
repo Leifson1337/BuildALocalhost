@@ -25,6 +25,12 @@ roles:
     rights: {{ r.rights }}
 {% endfor %}
 
+# RBAC: IdP group -> role. The auth layer returns groups; the gateway maps them to a role.
+group_role_map:
+{% for group, role in policy.group_role_map.items() %}
+  {{ group }}: {{ role }}
+{% endfor %}
+
 served_models:
 {% for m in policy.served_models %}
   - {{ m }}
