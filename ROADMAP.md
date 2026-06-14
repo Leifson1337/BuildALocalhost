@@ -44,7 +44,7 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [ ] End-to-End-Test auf echter Hardware (durch Nutzer; hier nur Simulation)
 - [ ] Authentik/Keycloak Realm-/Flow-Bootstrap-Automatisierung (aktuell manuell)
 
-## Stufe 3 — Produktionsplattform 🟡
+## Stufe 3 — Produktionsplattform 🟢 (offline-Teile fertig; Rest hardware-abhängig)
 
 - [x] Multi-Modell-Routing (fast/main/code…) — `routing.yaml`, eine Engine je Modell hinter LiteLLM
 - [x] Kubernetes-/Helm-Export aus denselben Profilen (`--target kubernetes`)
@@ -66,9 +66,10 @@ ein Profil auflöst und daraus eine valide `docker-compose.yml` + `.env` erzeugt
 - [x] Admin-Überblick: Grafana-Overview-Dashboard + `status`-CLI
 - [x] Eval-/Qualitätsmodul: Golden-Dataset-Runner (`eval`) + Langfuse (optional, enterprise)
 - [x] K8s-Parität für RAG/MCP/Monitoring (Deployments/DaemonSet/ConfigMaps)
-- [ ] K8s-Parität für Auth-Provider (Authentik/Keycloak StatefulSets) — Compose vollständig
-- [x] Plugin-Erweiterungspunkte: vector_dbs + auth_providers (zusätzlich zu engines/webuis/mcp)
-- [ ] Plugin-Erweiterungspunkte: model_sources/monitoring/deployment_targets
+- [x] K8s-Parität für Auth-Provider (Authentik/Keycloak/Authelia Deployments+Services)
+- [x] Plugin-Erweiterungspunkte: engines/webuis/mcp/vector_dbs/auth_providers/model_sources/monitoring/deployment_targets (alle)
+- [x] Triton + TensorRT-LLM als wählbare Engines (Kompatibilitätsmatrix + Sweep)
+- [x] IdP-Gruppen-RBAC (group_role_map: IdP-Gruppe → Rolle; Authelia-Regeln)
 
 ---
 

@@ -26,19 +26,26 @@ These are implemented as far as is meaningful offline; the rest needs a GPU host
 - **Auth IdPs (Authentik/Keycloak)** — services render and start, but realm/flow/group bootstrap
   is manual; UI/IdP-level RBAC (mapping IdP groups → roles) is not yet automated.
 
-## 3. Additive features not yet built (offline-doable, just not requested/finished)
+## 3. Additive features — status
 
-- **Selectable Triton / TensorRT-LLM / Aphrodite / LMDeploy engines** — only
-  vLLM/SGLang/TGI/NIM/Ollama/llama.cpp are in the engine catalog today. Adding more is one
-  catalog entry + a command builder each.
+Done (integrated since the first GAPS draft):
+
+- ✅ **Triton + TensorRT-LLM** are selectable engines (compatibility matrix + 64-combo sweep).
+  *(Aphrodite/LMDeploy remain easy further additions — one catalog entry + command builder each.)*
+- ✅ **K8s parity for auth providers** — Authentik/Keycloak/Authelia render on Kubernetes too.
+- ✅ **All plugin extension points** — engines/webuis/mcp_servers/vector_dbs/auth_providers/
+  model_sources/monitoring/deployment_targets.
+- ✅ **IdP group RBAC** — `group_role_map` (IdP group → role) in the policy + Authelia rules.
+
+Still open / intentionally not done:
+
 - **Expert single-toggles for CUDA version / cuDNN / NCCL / Nsight** — intentionally
   container-managed (ADR-0003/0010); not exposed as individual switches.
-- **K8s parity for auth providers** — RAG/MCP/monitoring have K8s parity; Authentik/Keycloak on
-  K8s (StatefulSets) is still Compose-only.
-- **More plugin extension points** — `engines/webuis/mcp_servers/vector_dbs/auth_providers` are
-  supported; `model_sources/monitoring/deployment_targets` are planned.
+- **Aphrodite / LMDeploy engines** — not yet catalogued (trivial to add).
 - **Richer bespoke admin UI** — today: Grafana dashboard + `status` CLI (deliberately reusing
   proven tools instead of a custom app).
+- **IdP RBAC enforcement wiring** — the group→role map is generated + (for Authelia) rendered as
+  rules; mapping OIDC group claims to roles inside Authentik/Keycloak realms is still manual.
 
 ## 4. Inherent limitations (cannot be "fixed")
 
@@ -52,6 +59,6 @@ These are implemented as far as is meaningful offline; the rest needs a GPU host
 
 ## Priorities if you want to close gaps next
 
-1. (offline) Add Triton + TensorRT-LLM as selectable engines.
-2. (offline) K8s parity for auth providers + more plugin points.
-3. (hardware) Run the full `TESTING.md` §B plan on your GPU host; record measured tuning.
+1. (offline, small) Add Aphrodite / LMDeploy engines; automate IdP realm/group bootstrap.
+2. (hardware) Run the full `TESTING.md` §B plan on your GPU host; record measured tuning,
+   verify LEANN/TurboQuant/TurboVec images, MIG binding, and multi-node NCCL.

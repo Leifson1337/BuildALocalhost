@@ -282,6 +282,27 @@ instead of one 8-way-sharded model. Behaviour is deterministic and unit-tested; 
 
 ---
 
+## ADR-0021 — Triton/TensorRT-LLM, K8s auth parity, full plugin points, IdP-group RBAC
+
+**Context:** Additive items requested after the core was complete.
+
+**Decision:**
+- **Triton + TensorRT-LLM** added as catalog engines (OpenAI frontend; require a prepared model
+  repository / pre-compiled TRT-LLM engines, flagged like NIM). Compatibility-matrix entries +
+  the combinatorial sweep now cover 8 engines × 4 formats × 2 runtimes (64 combos).
+- **K8s auth parity:** Authentik/Keycloak/Authelia render as Deployments+Services with their
+  Secret keys, matching Compose.
+- **Plugin points:** loader now covers model_sources/monitoring/deployment_targets too;
+  monitoring plugins add Prometheus scrape targets, model_sources extend the wizard.
+- **IdP group RBAC:** `group_role_map` (catalog default + profile `rbac` override) is validated,
+  rendered into `policy.yaml`, and turned into Authelia access rules. Enforcement of OIDC group
+  claims inside Authentik/Keycloak realms remains a manual bootstrap step.
+
+**Consequences:** The previously "additive" gaps are closed offline; remaining gaps are
+hardware-only or deliberate (see `GAPS.md`). 47/47 offline tests.
+
+---
+
 ## Open decisions (to be asked, not assumed)
 
 Tracked in `ROADMAP.md` → "Offene Fragen". Will be raised when the relevant stage is reached:

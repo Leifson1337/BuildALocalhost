@@ -185,3 +185,13 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0
 - `docs/GAPS.md`: ehrliche Liste bekannter Luecken/Limitierungen
 - README vollstaendig neu: erklaert Architektur, Pipeline, Modi, Auswahl, Profile,
   Performance, RAG, Endpunkte, Skills, Security, Befehle, Tests, Status
+
+### Stufe 3 (Forts.) — Additive Nachruestung
+
+- Triton + TensorRT-LLM als waehlbare Engines (Kompatibilitaetsmatrix + 64-Kombi-Sweep)
+- K8s-Auth-Paritaet: Authentik/Keycloak/Authelia auch als Kubernetes-Deployments
+- Alle Plugin-Erweiterungspunkte: model_sources/monitoring/deployment_targets ergaenzt
+  (Monitoring-Plugins -> Prometheus-Targets; `list-plugins` CLI)
+- IdP-Gruppen-RBAC: `group_role_map` (Default + Profil-Override) in policy.yaml +
+  Authelia-Regeln; Validator prueft unbekannte Rollen
+- ADR-0021; Smoke-Tests gesamt 47/47; alle 9 Profile valide (compose + k8s)
