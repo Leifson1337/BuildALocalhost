@@ -24,6 +24,29 @@ def _q():
         return None
 
 
+def _choices(items: list) -> list:
+    """Convert {"name","value",...} dicts into questionary.Choice objects.
+
+    questionary>=2.1 only builds value-based defaults from Choice instances
+    (not from raw dicts), so passing default="<value>" against dict choices
+    raises ValueError. Wrapping the choices keeps the value-based defaults working.
+    """
+    q = _q()
+    if not q:
+        return items
+    out = []
+    for it in items:
+        if isinstance(it, dict):
+            out.append(q.Choice(
+                title=it.get("name"),
+                value=it.get("value"),
+                checked=bool(it.get("checked", False)),
+            ))
+        else:
+            out.append(it)
+    return out
+
+
 # --------------------------------------------------------------------------- mode + hardware
 
 def select_mode(default: str = "auto") -> str:
@@ -32,13 +55,13 @@ def select_mode(default: str = "auto") -> str:
         return default
     choice = q.select(
         "Was möchtest du tun?",
-        choices=[
+        choices=_choices([
             {"name": "Aktuelle Hardware erkennen und optimales Setup vorschlagen", "value": "auto"},
             {"name": "Hardware manuell eingeben", "value": "manual"},
             {"name": "Fertiges Profil auswählen", "value": "profile"},
             {"name": "Expertenmodus (jede Ebene einzeln)", "value": "expert"},
             {"name": "Setup simulieren (ohne Installation)", "value": "simulation"},
-        ],
+        ]),
         default="auto",
     ).ask()
     return choice or default
@@ -172,7 +195,7 @@ def _select_endpoints(q) -> list[dict[str, Any]]:
     eps: list[dict[str, Any]] = []
     while True:
         choices = [{"name": p["name"], "value": p["id"]} for p in presets]
-        preset = q.select("Provider/Preset?", choices=choices, default="custom").ask()
+        preset = q.select("Provider/Preset?", choices=_choices(choices), default="custom").ask()
         name = q.text("Anzeigename (Modellname am Gateway)?", default=preset).ask()
         modelid = q.text("Modell-ID beim Provider?", default="gpt-4o").ask()
         ep = {"name": name, "preset": preset, "model": modelid}
@@ -207,7 +230,7 @@ def _select_model(q) -> Optional[str]:
     for ms in plugins.contributed_model_sources():
         if ms.get("id"):
             choices.append({"name": ms.get("name", ms["id"]) + " (Plugin)", "value": "plugin:" + ms["id"]})
-    source = q.select("Modellquelle?", choices=choices, default="curated").ask()
+    source = q.select("Modellquelle?", choices=_choices(choices), default="curated").ask()
     if source and source.startswith("plugin:"):
         return q.text(f"Modell-ID/Pfad für {source[7:]}:").ask() or None
 
@@ -266,7 +289,7 @@ def _select_webuis(q):
 def _select_security(q) -> Optional[str]:
     profs = catalog.load_security().get("profiles", [])
     choices = [{"name": f"{p['name']}", "value": p["id"]} for p in profs]
-    return q.select("Sicherheitsprofil?", choices=choices, default="public_secure").ask()
+    return q.select("Sicherheitsprofil?", choices=_choices(choices), default="public_secure").ask()
 
 
 def _select_auth(q, sec_profile: Optional[str]) -> Optional[str]:
@@ -279,7 +302,7 @@ def _select_auth(q, sec_profile: Optional[str]) -> Optional[str]:
         for p in providers
     ]
     default = recommended[0] if recommended else "litellm_keys"
-    return q.select("Auth-Layer?", choices=choices, default=default).ask()
+    return q.select("Auth-Layer?", choices=_choices(choices), default=default).ask()
 
 
 def _expert_rag(q, overrides: dict) -> None:
