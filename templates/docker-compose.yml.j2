@@ -9,6 +9,10 @@ networks:
   public: {}
   internal:
     internal: true
+  # Egress-only network: lets model-serving containers (inference/embeddings/
+  # reranker) reach Hugging Face to download weights. Everything else (DB, redis,
+  # gateway, auth, MCP) stays on the isolated `internal` network with no egress.
+  egress: {}
 {% if monitoring %}
   monitoring:
     internal: true
@@ -135,7 +139,7 @@ services:
     volumes:
       - hf_cache:/hf-cache
       - model_cache:/models
-    networks: [internal]
+    networks: [internal, egress]   # egress: pull model weights from Hugging Face
 {% if engine_gpu_required and runtime_kind == "cuda" %}
     deploy:
       resources:
@@ -303,7 +307,7 @@ services:
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
       - hf_cache_embed:/data
-    networks: [internal]
+    networks: [internal, egress]   # egress: pull embeddings model from Hugging Face
 {% if runtime_kind == "cuda" %}
     deploy:
       resources:
@@ -323,7 +327,7 @@ services:
     command: ["--model-id", "${RERANKER_MODEL}", "--port", "{{ rag.reranker.port }}"]
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
-    networks: [internal]
+    networks: [internal, egress]   # egress: pull reranker model from Hugging Face
 {% if runtime_kind == "cuda" %}
     deploy:
       resources:
